@@ -10,7 +10,7 @@ export default function AppTabs() {
   return (
     <NativeTabs
       backgroundColor={colors.background}
-      tintColor={colors.tint}
+      tintColor="#2563EB"
       labelStyle={{
         color: colors.text,
       }}
