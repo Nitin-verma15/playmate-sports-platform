@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { router } from "expo-router";
 import {
   Pressable,
   ScrollView,
@@ -311,7 +312,15 @@ function GameCard({ game }: { game: Game }) {
   const progress = (game.players / game.maxPlayers) * 100;
 
   return (
-    <Pressable style={styles.gameCard}>
+   <Pressable
+  style={styles.gameCard}
+  onPress={() =>
+    router.push({
+      pathname: "/game-details",
+      params: { id: game.id },
+    })
+  }
+>
       <View style={styles.gameHeader}>
         <View style={styles.sportBadge}>
           <Text style={styles.sportBadgeText}>
