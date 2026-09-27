@@ -144,7 +144,6 @@ export default function HomeScreen() {
 
   function handleSportPress(sportName: string) {
     setActiveSport(sportName);
-    // navigate to discover with sport filter pre-selected
     router.push({ pathname: "/discover", params: { sport: sportName } });
   }
 
@@ -166,7 +165,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Good afternoon 👋</Text>
@@ -182,7 +180,6 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {/* Search bar - tapping opens AI Search */}
         <Pressable
           style={({ pressed }) => [styles.searchBar, pressed && styles.cardPressed]}
           onPress={handleSearchPress}
@@ -197,7 +194,6 @@ export default function HomeScreen() {
           </View>
         </Pressable>
 
-        {/* Sports */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Sports</Text>
         </View>
@@ -229,7 +225,6 @@ export default function HomeScreen() {
           })}
         </ScrollView>
 
-        {/* Nearby games */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Nearby Games</Text>
           <Pressable onPress={handleSeeAll}>

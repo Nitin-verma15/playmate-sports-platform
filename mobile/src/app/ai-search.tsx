@@ -32,7 +32,6 @@ type ExtractedFilters = {
   time: string | null;
 };
 
-// dummy game data - same as rest of app
 const allGames: Game[] = [
   {
     id: "1",
@@ -134,7 +133,6 @@ const exampleQueries = [
   "Cricket match near me in the morning",
 ];
 
-// simple keyword-based extraction - real version will call GenAI API
 function extractFilters(query: string): ExtractedFilters {
   const q = query.toLowerCase();
 
@@ -192,7 +190,6 @@ export default function AISearchScreen() {
     setLoading(true);
     setSearched(false);
 
-    // simulate API delay - will call real GenAI endpoint later
     setTimeout(() => {
       const extracted = extractFilters(query);
       const matched = matchGames(extracted);
@@ -216,7 +213,6 @@ export default function AISearchScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
         <View style={styles.header}>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backArrow}>‹</Text>
@@ -230,7 +226,6 @@ export default function AISearchScreen() {
           </View>
         </View>
 
-        {/* Input */}
         <TextInput
           style={styles.input}
           placeholder="Find an intermediate football game within 5 km tomorrow evening..."
@@ -242,7 +237,6 @@ export default function AISearchScreen() {
           textAlignVertical="top"
         />
 
-        {/* Search button */}
         <Pressable
           style={[styles.searchBtn, !query.trim() && styles.searchBtnDisabled]}
           onPress={handleSearch}
@@ -255,7 +249,6 @@ export default function AISearchScreen() {
           )}
         </Pressable>
 
-        {/* Example queries - shown before first search */}
         {!searched && !loading && (
           <View style={styles.examplesSection}>
             <Text style={styles.examplesLabel}>Try an example</Text>
@@ -279,7 +272,6 @@ export default function AISearchScreen() {
           </View>
         )}
 
-        {/* Extracted filters */}
         {searched && hasFilters && (
           <View style={styles.filtersSection}>
             <Text style={styles.filtersLabel}>Extracted Filters</Text>
@@ -300,7 +292,6 @@ export default function AISearchScreen() {
           </View>
         )}
 
-        {/* Results */}
         {searched && (
           <View style={styles.resultsSection}>
             <Text style={styles.resultsLabel}>
