@@ -21,7 +21,6 @@ type Game = {
   role: "joined" | "created";
 };
 
-// dummy data - will be replaced with API calls
 const allGames: Game[] = [
   {
     id: "1",

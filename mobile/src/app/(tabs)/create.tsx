@@ -38,7 +38,6 @@ const skillColors: Record<SkillLevel, { text: string; bg: string }> = {
 
 const maxPlayersOptions = [4, 6, 8, 10, 12, 16, 20, 22];
 
-// dummy venues for now, will come from Google Places API later
 const venueSuggestions = [
   "Central Park Ground A",
   "Campus Court B",
@@ -71,7 +70,6 @@ export default function CreateGameScreen() {
 
   function handleCreate() {
     if (!isFormValid) return;
-    // will call POST /api/games once backend is ready
     Alert.alert(
       "Game Created! 🎉",
       `${sport?.emoji} ${gameTitle}\n📍 ${venue}\n📅 ${date} at ${time}\n👥 Max ${maxPlayers} players • ${skillLevel}`,
@@ -165,7 +163,6 @@ export default function CreateGameScreen() {
           )}
         </View>
 
-        {/* map will be added in W7 with Google Maps */}
         <Pressable
           style={styles.mapBox}
           onPress={() => Alert.alert("Map", "Google Maps coming in W7.")}

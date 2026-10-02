@@ -21,7 +21,6 @@ type RecentGame = {
   sportBg: string;
 };
 
-// dummy user data - will be replaced with real auth user
 const user = {
   name: "Arjun Mehta",
   college: "IIT Bangalore",
