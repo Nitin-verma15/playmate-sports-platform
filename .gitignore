@@ -150,3 +150,8 @@ vite.config.ts.timestamp-*
 ANTIGRAVITY_HANDOFF.md
 *HANDOFF*.md
 
+# Firebase credentials (never push)
+serviceAccountKey.json
+*firebase-adminsdk*.json
+
+
