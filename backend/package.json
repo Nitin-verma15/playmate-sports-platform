@@ -7,7 +7,8 @@
     "dev": "nodemon --watch src --ext ts --exec \"tsc && node dist/server.js\"",
     "build": "tsc",
     "start": "node dist/server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:init": "tsc && node dist/scripts/init-db.js"
   },
   "private": true,
   "license": "ISC",

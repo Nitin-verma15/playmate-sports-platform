@@ -7,20 +7,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", async (_request, response) => {
+app.get("/api/health", async (req, res) => {
   try {
-    const result = await pool.query<{ database_time: Date }>(
-      "SELECT NOW() AS database_time"
-    );
-
-    response.status(200).json({
+    const result = await pool.query("SELECT NOW() AS current_time");
+    res.json({
       status: "ok",
       database: "connected",
-      databaseTime: result.rows[0].database_time,
+      time: result.rows[0].current_time,
     });
-  } catch (error) {
-    console.error("Database health check failed:", error);
-    response.status(503).json({
+  } catch (err) {
+    console.error("Database health check error:", err);
+    res.status(500).json({
       status: "error",
       database: "disconnected",
     });

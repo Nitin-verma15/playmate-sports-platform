@@ -141,3 +141,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# IDE settings
+.vscode/
+.idea/
+
+# Internal agent/handoff docs (never push to remote)
+ANTIGRAVITY_HANDOFF.md
+*HANDOFF*.md
+
