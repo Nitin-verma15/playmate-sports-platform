@@ -3,6 +3,8 @@ import express from "express";
 import { pool } from "./config/database";
 import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middleware/errorHandler";
+import gameRoutes from "./routes/gameRoutes";
+
 
 const app = express();
 
@@ -27,6 +29,7 @@ app.get("/api/health", async (req, res) => {
 });
 
 app.use("/api/users", userRoutes);
+app.use("/api/games", gameRoutes);
 
 app.use(errorHandler);
 
