@@ -177,3 +177,64 @@ export async function cancelGame(req: Request, res: Response, next: NextFunction
     next(err);
   }
 }
+
+export async function joinGame(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } });
+    }
+
+    const gameId = parseInt(String(req.params.id), 10);
+    if (isNaN(gameId)) {
+      return res.status(400).json({ error: { message: "Invalid game ID", code: "INVALID_ID" } });
+    }
+
+    const result = await gameService.joinGame(gameId, req.user.uid);
+
+    if (result.error === "GAME_NOT_FOUND") {
+      return res.status(404).json({ error: { message: "Game not found", code: "GAME_NOT_FOUND" } });
+    }
+    if (result.error === "USER_NOT_FOUND") {
+      return res.status(404).json({ error: { message: "Complete your profile first", code: "USER_NOT_FOUND" } });
+    }
+    if (result.error === "ALREADY_JOINED") {
+      return res.status(409).json({ error: { message: "You are already in this game", code: "ALREADY_JOINED" } });
+    }
+    if (result.error === "ALREADY_WAITLISTED") {
+      return res.status(409).json({ error: { message: "You are already on the waitlist", code: "ALREADY_WAITLISTED" } });
+    }
+    if (result.error === "GAME_NOT_JOINABLE") {
+      return res.status(400).json({ error: { message: "This game is not open for joining", code: "GAME_NOT_JOINABLE" } });
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function leaveGame(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: { message: "Unauthorized", code: "UNAUTHORIZED" } });
+    }
+
+    const gameId = parseInt(String(req.params.id), 10);
+    if (isNaN(gameId)) {
+      return res.status(400).json({ error: { message: "Invalid game ID", code: "INVALID_ID" } });
+    }
+
+    const result = await gameService.leaveGame(gameId, req.user.uid);
+
+    if (result.error === "USER_NOT_FOUND") {
+      return res.status(404).json({ error: { message: "User not found", code: "USER_NOT_FOUND" } });
+    }
+    if (result.error === "NOT_IN_GAME") {
+      return res.status(400).json({ error: { message: "You are not in this game", code: "NOT_IN_GAME" } });
+    }
+
+    return res.status(200).json(result);
+  } catch (err) {
+    next(err);
+  }
+}

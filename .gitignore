@@ -146,9 +146,6 @@ vite.config.ts.timestamp-*
 .vscode/
 .idea/
 
-# Internal agent/handoff docs (never push to remote)
-ANTIGRAVITY_HANDOFF.md
-*HANDOFF*.md
 
 # Firebase credentials (never push)
 serviceAccountKey.json
