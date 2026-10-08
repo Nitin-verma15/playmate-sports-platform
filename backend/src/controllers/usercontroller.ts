@@ -114,3 +114,32 @@ export async function updateSports(req: Request, res: Response, next: NextFuncti
     next(err);
   }
 }
+
+export async function getUserGames(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        error: {
+          message: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+      });
+    }
+
+    const type = req.query.type as string | undefined;
+    const games = await userService.getUserGames(req.user.uid, type);
+
+    if (!games) {
+      return res.status(404).json({
+        error: {
+          message: "User profile not found",
+          code: "USER_NOT_FOUND",
+        },
+      });
+    }
+
+    return res.status(200).json({ games, count: games.length });
+  } catch (err) {
+    next(err);
+  }
+}

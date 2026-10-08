@@ -16,5 +16,7 @@ router.post("/me", validate(createUserSchema), userController.createProfile);
 router.get("/me", userController.getProfile);
 router.put("/me", validate(updateUserSchema), userController.updateProfile);
 router.put("/me/sports", validate(updateSportsSchema), userController.updateSports);
+router.get("/me/games", userController.getUserGames);
+
 
 export default router;
