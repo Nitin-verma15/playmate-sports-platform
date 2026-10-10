@@ -1,5 +1,7 @@
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert ,
   Pressable,
   StyleSheet,
   Text,
@@ -7,6 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import api from "../services/api";
 
 const levels = [
   { id: "beginner",     name: "Beginner",     desc: "Just starting out, learning the rules." },
@@ -16,10 +20,34 @@ const levels = [
 
 export default function OnboardingSkillScreen() {
   const [selected, setSelected] = useState<string | null>(null);
+  const params = useLocalSearchParams<{ sports?: string }>();
+  const [loading, setLoading] = useState(false);
 
-  function handleFinish() {
+  async function handleFinish() {
+  if (!selected) return;
+  setLoading(true);
+
+  try {
+    const selectedSports = params.sports ? params.sports.split(",") : [];
+
+    const sportsPayload = selectedSports.map((sportId) => ({
+      sport: sportId.charAt(0).toUpperCase() + sportId.slice(1),
+      skill_level: selected.charAt(0).toUpperCase() + selected.slice(1),
+    }));
+
+    if (sportsPayload.length > 0) {
+      await api.put("/users/me/sports", { sports: sportsPayload });
+    }
+
     router.replace("/(tabs)");
+  } catch {
+    Alert.alert("Error", "Could not save your preferences. You can update them later in your profile.");
+    router.replace("/(tabs)");
+  } finally {
+    setLoading(false);
   }
+}
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -69,9 +97,11 @@ export default function OnboardingSkillScreen() {
             pressed && { opacity: 0.9 },
           ]}
           onPress={handleFinish}
-          disabled={!selected}
+          disabled={!selected || loading}
+
         >
-          <Text style={styles.btnText}>Let&apos;s Play 🎉</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Let&apos;s Play 🎉</Text>}
+
         </Pressable>
       </View>
     </SafeAreaView>
