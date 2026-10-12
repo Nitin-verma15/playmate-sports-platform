@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -9,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import api from "../../services/api";
 
 type Sport = {
   id: string;
@@ -57,6 +60,7 @@ export default function CreateGameScreen() {
   const [maxPlayers, setMaxPlayers] = useState<number>(10);
   const [skillLevel, setSkillLevel] = useState<SkillLevel | null>(null);
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const sport = sports.find((s) => s.id === selectedSport);
 
@@ -67,15 +71,44 @@ export default function CreateGameScreen() {
     date.trim().length > 0 &&
     time.trim().length > 0 &&
     skillLevel !== null;
+  function convertTo24h(timeStr: string): string {
+  const [time, modifier] = timeStr.trim().split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier?.toUpperCase() === "PM" && hours !== 12) hours += 12;
+  if (modifier?.toUpperCase() === "AM" && hours === 12) hours = 0;
+  return `${String(hours).padStart(2, "0")}:${String(minutes || 0).padStart(2, "0")}`;
+}
 
-  function handleCreate() {
-    if (!isFormValid) return;
-    Alert.alert(
-      "Game Created! 🎉",
-      `${sport?.emoji} ${gameTitle}\n📍 ${venue}\n📅 ${date} at ${time}\n👥 Max ${maxPlayers} players • ${skillLevel}`,
-      [{ text: "OK" }]
-    );
+  async function handleCreate() {
+  if (!isFormValid || !sport) return;
+  setLoading(true);
+
+  try {
+    const [day, month, year] = date.split("/");
+    const time24 = convertTo24h(time);
+    const scheduledAt = new Date(`${year}-${month.padStart(2,"0")}-${day.padStart(2,"0")}T${time24}:00.000Z`).toISOString();
+
+    await api.post("/games", {
+      sport: sport.name,
+      title: gameTitle.trim(),
+      venue: venue.trim(),
+      scheduled_at: scheduledAt,
+      skill_level: skillLevel,
+      max_players: maxPlayers,
+      description: description.trim() || undefined,
+    });
+
+    Alert.alert("Game Created! 🎉", `${sport.emoji} ${gameTitle} has been created.`, [
+      { text: "OK", onPress: () => router.replace("/discover") },
+    ]);
+  } catch (error: any) {
+    const msg = error?.response?.data?.error?.message || "Could not create the game. Please try again.";
+    Alert.alert("Error", msg);
+  } finally {
+    setLoading(false);
   }
+}
+
 
   function handleVenuePick(suggestion: string) {
     setVenue(suggestion);
@@ -179,7 +212,16 @@ export default function CreateGameScreen() {
               placeholder="dd/mm/yyyy"
               placeholderTextColor="#94A3B8"
               value={date}
-              onChangeText={setDate}
+              onChangeText={(val) => {
+                const digits = val.replace(/\D/g, "").slice(0, 8);
+                let formatted = digits;
+                if (digits.length >= 3 && digits.length <= 4) {
+                  formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                } else if (digits.length > 4) {
+                  formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+                }
+                setDate(formatted);
+              }}
               keyboardType="numeric"
               maxLength={10}
             />
@@ -188,10 +230,22 @@ export default function CreateGameScreen() {
             <Label text="Time" required />
             <TextInput
               style={styles.input}
-              placeholder="e.g. 4:00 PM"
+              placeholder="hh:mm AM/PM"
               placeholderTextColor="#94A3B8"
               value={time}
-              onChangeText={setTime}
+              onChangeText={(val) => {
+                const upper = val.toUpperCase();
+                const digits = upper.replace(/[^0-9APM\s:]/g, "");
+
+                if (digits.length <= 2) {
+                  setTime(digits);
+                } else if (digits.length === 3 && !digits.includes(":")) {
+                  setTime(`${digits.slice(0, 2)}:${digits.slice(2)}`);
+                } else {
+                  setTime(digits.slice(0, 8));
+                }
+              }}
+              autoCapitalize="characters"
               maxLength={8}
             />
           </View>
@@ -294,9 +348,10 @@ export default function CreateGameScreen() {
         <Pressable
           style={[styles.createBtn, !isFormValid && styles.createBtnDisabled]}
           onPress={handleCreate}
-          disabled={!isFormValid}
+          disabled={!isFormValid || loading}
         >
-          <Text style={styles.createBtnText}>Create Game ⚡</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.createBtnText}>Create Game ⚡</Text>}
+
         </Pressable>
 
         <View style={{ height: 32 }} />
