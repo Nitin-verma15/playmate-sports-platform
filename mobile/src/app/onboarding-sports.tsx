@@ -1,5 +1,7 @@
 import { useState } from "react";
 import {
+  ActivityIndicator, 
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -7,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import api from "../services/api";
 
 const sports = [
   { id: "football",   name: "Football",   emoji: "⚽", color: "#2563EB" },
@@ -18,6 +21,7 @@ const sports = [
 
 export default function OnboardingSportsScreen() {
   const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
 
   function toggle(id: string) {
     setSelected((prev) =>
@@ -26,6 +30,22 @@ export default function OnboardingSportsScreen() {
   }
 
   const canContinue = selected.length > 0;
+  async function handleContinue() {
+  if (!canContinue) return;
+  setLoading(true);
+  try {
+  router.push({
+  pathname: "/onboarding-skill",
+  params: { sports: selected.join(",") },
+});
+;
+  } catch {
+    Alert.alert("Error", "Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+}
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -73,10 +93,12 @@ export default function OnboardingSportsScreen() {
             !canContinue && styles.btnDisabled,
             pressed && { opacity: 0.9 },
           ]}
-          onPress={() => router.push("/onboarding-skill")}
-          disabled={!canContinue}
+          onPress={handleContinue}
+          disabled={!canContinue || loading}
+
         >
-          <Text style={styles.btnText}>Continue</Text>
+          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Continue</Text>}
+
         </Pressable>
       </View>
     </SafeAreaView>

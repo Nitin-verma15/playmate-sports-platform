@@ -16,4 +16,7 @@ router.post("/", authenticate, validate(createGameSchema), gameController.create
 router.put("/:id", authenticate, validate(updateGameSchema), gameController.updateGame);
 router.delete("/:id", authenticate, gameController.cancelGame);
 
+router.post("/:id/join", authenticate, gameController.joinGame);
+router.post("/:id/leave", authenticate, gameController.leaveGame);
+
 export default router;

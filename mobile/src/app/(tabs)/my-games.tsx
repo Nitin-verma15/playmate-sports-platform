@@ -1,131 +1,23 @@
-import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import api from "../../services/api";
 
 type TabKey = "Upcoming" | "Joined" | "Created" | "History";
 
 type Game = {
-  id: string;
+  id: number;
   sport: string;
-  emoji: string;
   title: string;
   venue: string;
-  date: string;
-  time: string;
-  distance: number;
-  skill: "Beginner" | "Intermediate" | "Advanced";
-  players: number;
-  maxPlayers: number;
-  status: "upcoming" | "full" | "completed" | "cancelled";
-  role: "joined" | "created";
+  scheduled_at: string;
+  skill_level: "Beginner" | "Intermediate" | "Advanced";
+  current_players: number;
+  max_players: number;
+  status: string;
+  organizer_name: string;
 };
-
-const allGames: Game[] = [
-  {
-    id: "1",
-    sport: "Football",
-    emoji: "⚽",
-    title: "Sunday Kickabout",
-    venue: "Central Park Ground A",
-    date: "Sun, 14 Sep",
-    time: "4:00 PM",
-    distance: 0.8,
-    skill: "Intermediate",
-    players: 14,
-    maxPlayers: 16,
-    status: "upcoming",
-    role: "joined",
-  },
-  {
-    id: "2",
-    sport: "Basketball",
-    emoji: "🏀",
-    title: "3v3 Street Hoops",
-    venue: "Campus Court B",
-    date: "Sat, 13 Sep",
-    time: "6:30 PM",
-    distance: 1.2,
-    skill: "Beginner",
-    players: 6,
-    maxPlayers: 6,
-    status: "full",
-    role: "joined",
-  },
-  {
-    id: "3",
-    sport: "Cricket",
-    emoji: "🏏",
-    title: "Morning Cricket Session",
-    venue: "University Oval",
-    date: "Mon, 15 Sep",
-    time: "7:00 AM",
-    distance: 2.1,
-    skill: "Intermediate",
-    players: 8,
-    maxPlayers: 12,
-    status: "upcoming",
-    role: "created",
-  },
-  {
-    id: "4",
-    sport: "Badminton",
-    emoji: "🏸",
-    title: "Evening Badminton",
-    venue: "Sports Complex Court 2",
-    date: "Tue, 16 Sep",
-    time: "5:30 PM",
-    distance: 3.4,
-    skill: "Advanced",
-    players: 4,
-    maxPlayers: 4,
-    status: "completed",
-    role: "joined",
-  },
-  {
-    id: "5",
-    sport: "Football",
-    emoji: "⚽",
-    title: "Weekend Football",
-    venue: "Community Sports Ground",
-    date: "Wed, 17 Sep",
-    time: "7:00 PM",
-    distance: 4.6,
-    skill: "Beginner",
-    players: 9,
-    maxPlayers: 12,
-    status: "upcoming",
-    role: "created",
-  },
-  {
-    id: "6",
-    sport: "Cricket",
-    emoji: "🏏",
-    title: "IIT Bangalore Cricket",
-    venue: "IIT Bangalore Ground",
-    date: "Thu, 11 Sep",
-    time: "8:00 AM",
-    distance: 1.8,
-    skill: "Advanced",
-    players: 12,
-    maxPlayers: 12,
-    status: "completed",
-    role: "created",
-  },
-];
-
-function getGamesForTab(tab: TabKey): Game[] {
-  switch (tab) {
-    case "Upcoming":
-      return allGames.filter((g) => g.status === "upcoming");
-    case "Joined":
-      return allGames.filter((g) => g.role === "joined");
-    case "Created":
-      return allGames.filter((g) => g.role === "created");
-    case "History":
-      return allGames.filter((g) => g.status === "completed" || g.status === "cancelled");
-  }
-}
 
 const skillColors = {
   Beginner:     { text: "#16A34A", bg: "#E8F5E9" },
@@ -141,11 +33,46 @@ const sportColors: Record<string, { text: string; bg: string }> = {
   Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
 };
 
+const sportEmojis: Record<string, string> = {
+  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
+};
+
 const tabs: TabKey[] = ["Upcoming", "Joined", "Created", "History"];
+
+const typeMap: Record<TabKey, string> = {
+  Upcoming: "upcoming",
+  Joined:   "joined",
+  Created:  "created",
+  History:  "history",
+};
 
 export default function MyGamesScreen() {
   const [activeTab, setActiveTab] = useState<TabKey>("Upcoming");
-  const games = getGamesForTab(activeTab);
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchGames = useCallback(async () => {
+    try {
+      const res = await api.get(`/users/me/games?type=${typeMap[activeTab]}`);
+      setGames(res.data.games || []);
+    } catch {
+      setGames([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchGames();
+  }, [fetchGames]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchGames();
+    setRefreshing(false);
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -154,20 +81,14 @@ export default function MyGamesScreen() {
       </View>
 
       <View style={styles.tabsWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsRow}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
           {tabs.map((tab) => (
             <Pressable
               key={tab}
               style={[styles.tab, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                {tab}
-              </Text>
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -176,15 +97,18 @@ export default function MyGamesScreen() {
       <ScrollView
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {games.length === 0 ? (
+        {loading ? (
+          <ActivityIndicator color="#2563EB" style={{ marginTop: 60 }} />
+        ) : games.length === 0 ? (
           <EmptyState tab={activeTab} />
         ) : (
           games.map((game) => (
             <GameCard
               key={game.id}
               game={game}
-              onPress={() => router.push({ pathname: "/game-details", params: { id: game.id } })}
+              onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
             />
           ))
         )}
@@ -195,19 +119,20 @@ export default function MyGamesScreen() {
 }
 
 function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
-  const isFull = game.players >= game.maxPlayers;
-  const isCompleted = game.status === "completed";
-  const progress = (game.players / game.maxPlayers) * 100;
+  const isFull = game.current_players >= game.max_players;
+  const isCompleted = game.status === "COMPLETED";
+  const progress = (game.current_players / game.max_players) * 100;
   const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
-  const skc = skillColors[game.skill];
+  const skc = skillColors[game.skill_level];
+  const emoji = sportEmojis[game.sport] ?? "🏅";
+  const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.cardHeader}>
         <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
-          <Text style={[styles.sportBadgeText, { color: sc.text }]}>
-            {game.emoji} {game.sport}
-          </Text>
+          <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
         </View>
         <View style={styles.cardRight}>
           {isCompleted && (
@@ -216,29 +141,23 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
             </View>
           )}
           <View style={[styles.emojiBox, { backgroundColor: sc.bg }]}>
-            <Text style={styles.emojiText}>{game.emoji}</Text>
+            <Text style={styles.emojiText}>{emoji}</Text>
           </View>
         </View>
       </View>
 
       <Text style={styles.cardTitle}>{game.title}</Text>
       <Text style={styles.info}>📍 {game.venue}</Text>
-      <Text style={styles.info}>📅 {game.date}  •  🕐 {game.time}  •  📍 {game.distance} km</Text>
+      <Text style={styles.info}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
       <View style={styles.cardFooter}>
         <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill}</Text>
+          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
         </View>
         <View>
-          <Text style={styles.playerCount}>{game.players}/{game.maxPlayers} players</Text>
+          <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
           <View style={styles.progressBg}>
-            <View
-              style={[
-                styles.progressBar,
-                { width: `${progress}%` },
-                isFull && { backgroundColor: "#DC2626" },
-              ]}
-            />
+            <View style={[styles.progressBar, { width: `${progress}%` }, isFull && { backgroundColor: "#DC2626" }]} />
           </View>
           {isFull && !isCompleted && <Text style={styles.fullLabel}>FULL</Text>}
         </View>
@@ -266,51 +185,21 @@ function EmptyState({ tab }: { tab: TabKey }) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F7F9FC" },
-
   header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   title: { fontSize: 26, fontWeight: "700", color: "#111827" },
-
   tabsWrap: { paddingLeft: 16 },
   tabsRow: { flexDirection: "row", gap: 8, paddingVertical: 12, paddingRight: 16 },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
+  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
   tabActive: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
   tabText: { fontSize: 13, fontWeight: "600", color: "#475569" },
   tabTextActive: { color: "#fff" },
-
   list: { paddingHorizontal: 16, paddingTop: 4 },
-
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 14,
-    marginBottom: 13,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 9,
-  },
+  card: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E2E8F0", padding: 14, marginBottom: 13 },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 9 },
   sportBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
   sportBadgeText: { fontSize: 11, fontWeight: "700" },
   cardRight: { flexDirection: "row", alignItems: "center", gap: 8 },
-  playedBadge: {
-    backgroundColor: "#F0FDF4",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
+  playedBadge: { backgroundColor: "#F0FDF4", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: "#BBF7D0" },
   playedText: { fontSize: 9, fontWeight: "700", color: "#16A34A", letterSpacing: 0.5 },
   emojiBox: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   emojiText: { fontSize: 20 },
@@ -323,7 +212,6 @@ const styles = StyleSheet.create({
   progressBg: { width: 70, height: 5, borderRadius: 5, backgroundColor: "#E5E7EB", overflow: "hidden" },
   progressBar: { height: "100%", borderRadius: 5, backgroundColor: "#F59E0B" },
   fullLabel: { fontSize: 9, color: "#DC2626", fontWeight: "700", textAlign: "right", marginTop: 3 },
-
   empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 40, marginBottom: 14 },
   emptyTitle: { fontSize: 17, fontWeight: "700", color: "#111827", textAlign: "center", marginBottom: 8 },

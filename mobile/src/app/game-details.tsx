@@ -1,4 +1,7 @@
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -7,104 +10,87 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
+import api from "../services/api";
 
 type Game = {
-  id: string;
+  id: number;
   sport: string;
-  emoji: string;
   title: string;
   venue: string;
-  date: string;
-  time: string;
-  distance: number;
-  skill: "Beginner" | "Intermediate" | "Advanced";
-  players: number;
-  maxPlayers: number;
+  scheduled_at: string;
+  skill_level: "Beginner" | "Intermediate" | "Advanced";
+  current_players: number;
+  max_players: number;
+  status: string;
+  organizer_name: string;
+  description?: string;
 };
 
-const games: Game[] = [
-  {
-    id: "1",
-    sport: "Football",
-    emoji: "⚽",
-    title: "Sunday Kickabout",
-    venue: "Central Park Ground A",
-    date: "Sun, 14 Sep",
-    time: "4:00 PM",
-    distance: 0.8,
-    skill: "Intermediate",
-    players: 14,
-    maxPlayers: 16,
-  },
-  {
-    id: "2",
-    sport: "Basketball",
-    emoji: "🏀",
-    title: "3v3 Street Hoops",
-    venue: "Campus Court B",
-    date: "Sat, 13 Sep",
-    time: "6:30 PM",
-    distance: 1.2,
-    skill: "Beginner",
-    players: 6,
-    maxPlayers: 6,
-  },
-  {
-    id: "3",
-    sport: "Cricket",
-    emoji: "🏏",
-    title: "Morning Cricket Session",
-    venue: "University Oval",
-    date: "Mon, 15 Sep",
-    time: "7:00 AM",
-    distance: 2.1,
-    skill: "Intermediate",
-    players: 8,
-    maxPlayers: 12,
-  },
-  {
-    id: "4",
-    sport: "Badminton",
-    emoji: "🏸",
-    title: "Evening Badminton",
-    venue: "Sports Complex Court 2",
-    date: "Tue, 16 Sep",
-    time: "5:30 PM",
-    distance: 3.4,
-    skill: "Advanced",
-    players: 3,
-    maxPlayers: 4,
-  },
-  {
-    id: "5",
-    sport: "Football",
-    emoji: "⚽",
-    title: "Weekend Football",
-    venue: "Community Sports Ground",
-    date: "Wed, 17 Sep",
-    time: "7:00 PM",
-    distance: 4.6,
-    skill: "Beginner",
-    players: 9,
-    maxPlayers: 12,
-  },
-];
+const sportEmojis: Record<string, string> = {
+  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
+};
+
+const sportColors: Record<string, { text: string; bg: string }> = {
+  Football:   { text: "#2563EB", bg: "#EAF1FF" },
+  Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
+  Basketball: { text: "#D97706", bg: "#FEF3C7" },
+  Badminton:  { text: "#7C3AED", bg: "#F3E8FF" },
+  Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
+};
+
+const skillColors: Record<string, { text: string; bg: string }> = {
+  Beginner:     { text: "#16A34A", bg: "#E8F5E9" },
+  Intermediate: { text: "#D97706", bg: "#FEF3C7" },
+  Advanced:     { text: "#DC2626", bg: "#FEE2E2" },
+};
 
 export default function GameDetailsScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
+  const [game, setGame] = useState<Game | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
 
-  const game = games.find((item) => item.id === id);
+  useEffect(() => {
+    if (!id) return;
+    api.get(`/games/${id}`)
+      .then((res) => setGame(res.data.game))
+      .catch(() => setGame(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  async function handleJoin() {
+    if (!game) return;
+    setJoining(true);
+    try {
+      const res = await api.post(`/games/${game.id}/join`);
+      if (res.data.status === "JOINED") {
+        Alert.alert("Joined! 🎉", "You have successfully joined this game.");
+        setGame((prev) => prev ? { ...prev, current_players: prev.current_players + 1 } : prev);
+      } else if (res.data.status === "WAITLISTED") {
+        Alert.alert("Waitlisted", `Game is full. You are #${res.data.position} on the waitlist.`);
+      }
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || "Could not join the game.";
+      Alert.alert("Error", msg);
+    } finally {
+      setJoining(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ActivityIndicator color="#2563EB" style={{ marginTop: 80 }} />
+      </SafeAreaView>
+    );
+  }
 
   if (!game) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Game not found</Text>
-
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </Pressable>
         </View>
@@ -112,127 +98,104 @@ export default function GameDetailsScreen() {
     );
   }
 
-  const isFull = game.players >= game.maxPlayers;
+  const isFull = game.current_players >= game.max_players;
+  const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
+  const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
+  const emoji = sportEmojis[game.sport] ?? "🏅";
+  const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const initials = game.organizer_name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "??";
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        <Pressable
-          style={styles.backRow}
-          onPress={() => router.back()}
-        >
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <Pressable style={styles.backRow} onPress={() => router.back()}>
           <Text style={styles.backArrow}>‹</Text>
           <Text style={styles.backText}>Back</Text>
         </Pressable>
 
-        <View style={styles.heroIcon}>
-          <Text style={styles.heroEmoji}>{game.emoji}</Text>
+        <View style={[styles.heroIcon, { backgroundColor: sc.bg }]}>
+          <Text style={styles.heroEmoji}>{emoji}</Text>
         </View>
 
-        <View style={styles.sportBadge}>
-          <Text style={styles.sportBadgeText}>
-            {game.emoji} {game.sport}
-          </Text>
+        <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
+          <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
         </View>
 
         <Text style={styles.title}>{game.title}</Text>
 
-        <Text style={styles.description}>
-          Join a local {game.sport.toLowerCase()} game and meet
-          other players with similar interests and skill levels.
-        </Text>
+        {game.description ? (
+          <Text style={styles.description}>{game.description}</Text>
+        ) : (
+          <Text style={styles.description}>
+            Join a local {game.sport.toLowerCase()} game and meet other players with similar interests and skill levels.
+          </Text>
+        )}
 
         <View style={styles.infoCard}>
           <InfoRow icon="📍" label="Venue" value={game.venue} />
-          <InfoRow icon="📅" label="Date" value={game.date} />
-          <InfoRow icon="🕐" label="Time" value={game.time} />
-          <InfoRow
-            icon="📍"
-            label="Distance"
-            value={`${game.distance} km away`}
-          />
+          <InfoRow icon="📅" label="Date" value={dateStr} />
+          <InfoRow icon="🕐" label="Time" value={timeStr} />
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Skill Level</Text>
-
-          <View style={styles.skillBadge}>
-            <Text style={styles.skillText}>{game.skill}</Text>
+          <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
+            <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
           <View style={styles.playerHeader}>
             <Text style={styles.sectionTitle}>Players</Text>
-
-            <Text style={styles.playerCount}>
-              {game.players}/{game.maxPlayers}
-            </Text>
+            <Text style={styles.playerCount}>{game.current_players}/{game.max_players}</Text>
           </View>
-
           <View style={styles.progressBackground}>
             <View
               style={[
                 styles.progressBar,
-                {
-                  width: `${(game.players / game.maxPlayers) * 100}%`,
-                },
+                { width: `${(game.current_players / game.max_players) * 100}%` },
                 isFull && styles.fullProgressBar,
               ]}
             />
           </View>
-
           <Text style={styles.playerText}>
-            {isFull
-              ? "This game is currently full."
-              : `${game.maxPlayers - game.players} slots available`}
+            {isFull ? "This game is currently full." : `${game.max_players - game.current_players} slots available`}
           </Text>
         </View>
 
         <View style={styles.organizerCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>AM</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
-
           <View>
             <Text style={styles.organizerLabel}>Organized by</Text>
-            <Text style={styles.organizerName}>Arjun Mehta</Text>
+            <Text style={styles.organizerName}>{game.organizer_name}</Text>
           </View>
         </View>
 
         <Pressable
-          style={[
-            styles.joinButton,
-            isFull && styles.disabledButton,
-          ]}
-          disabled={isFull}
-          onPress={() => {}}
+          style={[styles.joinButton, (isFull || joining) && styles.disabledButton]}
+          disabled={joining}
+          onPress={handleJoin}
         >
-          <Text style={styles.joinButtonText}>
-            {isFull ? "Game Full" : "Join Game"}
-          </Text>
+          {joining ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.joinButtonText}>
+              {isFull ? "Join Waitlist" : "Join Game"}
+            </Text>
+          )}
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
+function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoIcon}>{icon}</Text>
-
       <View>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue}>{value}</Text>
@@ -242,250 +205,42 @@ function InfoRow({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F7F9FC",
-  },
-
-  container: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-
-  backRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 18,
-  },
-
-  backArrow: {
-    fontSize: 30,
-    lineHeight: 30,
-    color: "#111827",
-    marginRight: 5,
-  },
-
-  backText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
-  },
-
-  heroIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: "#EAF1FF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-
-  heroEmoji: {
-    fontSize: 36,
-  },
-
-  sportBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#EAF1FF",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginBottom: 9,
-  },
-
-  sportBadgeText: {
-    fontSize: 11,
-    color: "#2563EB",
-    fontWeight: "700",
-  },
-
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#111827",
-  },
-
-  description: {
-    marginTop: 9,
-    fontSize: 14,
-    lineHeight: 21,
-    color: "#64748B",
-  },
-
-  infoCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginTop: 20,
-    padding: 15,
-  },
-
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-
-  infoIcon: {
-    width: 34,
-    fontSize: 17,
-  },
-
-  infoLabel: {
-    fontSize: 11,
-    color: "#94A3B8",
-    marginBottom: 2,
-  },
-
-  infoValue: {
-    fontSize: 14,
-    color: "#334155",
-    fontWeight: "600",
-  },
-
-  section: {
-    marginTop: 20,
-  },
-
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 9,
-  },
-
-  skillBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#E8F5E9",
-    borderRadius: 10,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-  },
-
-  skillText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#15803D",
-  },
-
-  playerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  playerCount: {
-    fontSize: 14,
-    color: "#334155",
-    fontWeight: "700",
-  },
-
-  progressBackground: {
-    height: 8,
-    borderRadius: 8,
-    backgroundColor: "#E2E8F0",
-    overflow: "hidden",
-  },
-
-  progressBar: {
-    height: "100%",
-    borderRadius: 8,
-    backgroundColor: "#F59E0B",
-  },
-
-  fullProgressBar: {
-    backgroundColor: "#DC2626",
-  },
-
-  playerText: {
-    marginTop: 7,
-    fontSize: 12,
-    color: "#64748B",
-  },
-
-  organizerCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 14,
-    marginTop: 20,
-  },
-
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 11,
-  },
-
-  avatarText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-
-  organizerLabel: {
-    fontSize: 11,
-    color: "#94A3B8",
-  },
-
-  organizerName: {
-    fontSize: 14,
-    color: "#111827",
-    fontWeight: "700",
-    marginTop: 2,
-  },
-
-  joinButton: {
-    height: 52,
-    borderRadius: 15,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 20,
-  },
-
-  disabledButton: {
-    backgroundColor: "#94A3B8",
-  },
-
-  joinButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  errorContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 15,
-  },
-
-  backButton: {
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-
-  backButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-  },
+  safeArea: { flex: 1, backgroundColor: "#F7F9FC" },
+  container: { padding: 16, paddingBottom: 32 },
+  backRow: { flexDirection: "row", alignItems: "center", marginBottom: 18 },
+  backArrow: { fontSize: 30, lineHeight: 30, color: "#111827", marginRight: 5 },
+  backText: { fontSize: 14, fontWeight: "600", color: "#334155" },
+  heroIcon: { width: 72, height: 72, borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  heroEmoji: { fontSize: 36 },
+  sportBadge: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 9 },
+  sportBadgeText: { fontSize: 11, fontWeight: "700" },
+  title: { fontSize: 28, fontWeight: "700", color: "#111827" },
+  description: { marginTop: 9, fontSize: 14, lineHeight: 21, color: "#64748B" },
+  infoCard: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E2E8F0", marginTop: 20, padding: 15 },
+  infoRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8 },
+  infoIcon: { width: 34, fontSize: 17 },
+  infoLabel: { fontSize: 11, color: "#94A3B8", marginBottom: 2 },
+  infoValue: { fontSize: 14, color: "#334155", fontWeight: "600" },
+  section: { marginTop: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 9 },
+  skillBadge: { alignSelf: "flex-start", borderRadius: 10, paddingHorizontal: 11, paddingVertical: 6 },
+  skillText: { fontSize: 11, fontWeight: "700" },
+  playerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  playerCount: { fontSize: 14, color: "#334155", fontWeight: "700" },
+  progressBackground: { height: 8, borderRadius: 8, backgroundColor: "#E2E8F0", overflow: "hidden" },
+  progressBar: { height: "100%", borderRadius: 8, backgroundColor: "#F59E0B" },
+  fullProgressBar: { backgroundColor: "#DC2626" },
+  playerText: { marginTop: 7, fontSize: 12, color: "#64748B" },
+  organizerCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E2E8F0", padding: 14, marginTop: 20 },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", marginRight: 11 },
+  avatarText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  organizerLabel: { fontSize: 11, color: "#94A3B8" },
+  organizerName: { fontSize: 14, color: "#111827", fontWeight: "700", marginTop: 2 },
+  joinButton: { height: 52, borderRadius: 15, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", marginTop: 20 },
+  disabledButton: { backgroundColor: "#94A3B8" },
+  joinButtonText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  errorContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
+  errorTitle: { fontSize: 20, fontWeight: "700", color: "#111827", marginBottom: 15 },
+  backButton: { backgroundColor: "#2563EB", paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12 },
+  backButtonText: { color: "#fff", fontWeight: "700" },
 });

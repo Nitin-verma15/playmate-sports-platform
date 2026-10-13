@@ -227,3 +227,179 @@ export async function cancelGame(gameId: number, firebaseUid: string) {
 
   return { game: result.rows[0] };
 }
+
+export async function joinGame(gameId: number, firebaseUid: string) {
+  const userResult = await pool.query(
+    "SELECT id FROM users WHERE firebase_uid = $1",
+    [firebaseUid]
+  );
+  if (userResult.rows.length === 0) return { error: "USER_NOT_FOUND" };
+  const userId = userResult.rows[0].id;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const gameResult = await client.query(
+      "SELECT * FROM games WHERE id = $1 FOR UPDATE",
+      [gameId]
+    );
+    if (gameResult.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { error: "GAME_NOT_FOUND" };
+    }
+
+    const game = gameResult.rows[0];
+    if (game.status === "CANCELLED" || game.status === "COMPLETED") {
+      await client.query("ROLLBACK");
+      return { error: "GAME_NOT_JOINABLE" };
+    }
+
+    const alreadyMember = await client.query(
+      "SELECT id FROM game_members WHERE game_id = $1 AND user_id = $2",
+      [gameId, userId]
+    );
+    if (alreadyMember.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return { error: "ALREADY_JOINED" };
+    }
+
+    const alreadyWaiting = await client.query(
+      "SELECT id FROM game_waitlist WHERE game_id = $1 AND user_id = $2",
+      [gameId, userId]
+    );
+    if (alreadyWaiting.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return { error: "ALREADY_WAITLISTED" };
+    }
+
+    const countResult = await client.query(
+      "SELECT COUNT(*)::int AS total FROM game_members WHERE game_id = $1",
+      [gameId]
+    );
+    const currentCount = countResult.rows[0].total;
+
+    if (currentCount < game.max_players) {
+      await client.query(
+        "INSERT INTO game_members (game_id, user_id) VALUES ($1, $2)",
+        [gameId, userId]
+      );
+
+      if (currentCount + 1 === game.max_players) {
+        await client.query(
+          "UPDATE games SET status = 'FULL', updated_at = NOW() WHERE id = $1",
+          [gameId]
+        );
+      }
+
+      await client.query("COMMIT");
+      return { status: "JOINED", gameId, userId };
+    } else {
+      const posResult = await client.query(
+        "SELECT COALESCE(MAX(position), 0) + 1 AS next_pos FROM game_waitlist WHERE game_id = $1",
+        [gameId]
+      );
+      const nextPos = posResult.rows[0].next_pos;
+
+      await client.query(
+        "INSERT INTO game_waitlist (game_id, user_id, position) VALUES ($1, $2, $3)",
+        [gameId, userId, nextPos]
+      );
+
+      await client.query("COMMIT");
+      return { status: "WAITLISTED", position: nextPos, gameId, userId };
+    }
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function leaveGame(gameId: number, firebaseUid: string) {
+  const userResult = await pool.query(
+    "SELECT id FROM users WHERE firebase_uid = $1",
+    [firebaseUid]
+  );
+  if (userResult.rows.length === 0) return { error: "USER_NOT_FOUND" };
+  const userId = userResult.rows[0].id;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    await client.query(
+      "SELECT * FROM games WHERE id = $1 FOR UPDATE",
+      [gameId]
+    );
+
+    const inWaitlist = await client.query(
+      "SELECT position FROM game_waitlist WHERE game_id = $1 AND user_id = $2",
+      [gameId, userId]
+    );
+
+    if (inWaitlist.rows.length > 0) {
+      const pos = inWaitlist.rows[0].position;
+      await client.query(
+        "DELETE FROM game_waitlist WHERE game_id = $1 AND user_id = $2",
+        [gameId, userId]
+      );
+      await client.query(
+        "UPDATE game_waitlist SET position = position - 1 WHERE game_id = $1 AND position > $2",
+        [gameId, pos]
+      );
+      await client.query("COMMIT");
+      return { status: "LEFT_WAITLIST" };
+    }
+
+    const inMembers = await client.query(
+      "SELECT id FROM game_members WHERE game_id = $1 AND user_id = $2",
+      [gameId, userId]
+    );
+
+    if (inMembers.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return { error: "NOT_IN_GAME" };
+    }
+
+    await client.query(
+      "DELETE FROM game_members WHERE game_id = $1 AND user_id = $2",
+      [gameId, userId]
+    );
+
+    const nextInLine = await client.query(
+      "SELECT user_id FROM game_waitlist WHERE game_id = $1 ORDER BY position ASC LIMIT 1",
+      [gameId]
+    );
+
+    if (nextInLine.rows.length > 0) {
+      const promotedUserId = nextInLine.rows[0].user_id;
+      await client.query(
+        "DELETE FROM game_waitlist WHERE game_id = $1 AND user_id = $2",
+        [gameId, promotedUserId]
+      );
+      await client.query(
+        "INSERT INTO game_members (game_id, user_id) VALUES ($1, $2)",
+        [gameId, promotedUserId]
+      );
+      await client.query(
+        "UPDATE game_waitlist SET position = position - 1 WHERE game_id = $1",
+        [gameId]
+      );
+    } else {
+      await client.query(
+        "UPDATE games SET status = 'OPEN', updated_at = NOW() WHERE id = $1 AND status = 'FULL'",
+        [gameId]
+      );
+    }
+
+    await client.query("COMMIT");
+    return { status: "LEFT" };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

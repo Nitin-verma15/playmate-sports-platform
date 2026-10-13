@@ -1,5 +1,8 @@
+
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -8,13 +11,41 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import api from "../services/api";
 
 export default function OnboardingProfileScreen() {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [college, setCollege] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const canContinue = name.trim().length > 0 && city.trim().length > 0;
+
+  async function handleContinue() {
+    if (!canContinue) return;
+    setLoading(true);
+
+    try {
+      await api.post("/users/me", {
+        full_name: name.trim(),
+        city: city.trim(),
+        college: college.trim() || undefined,
+      });
+
+      router.push({
+        pathname: "/onboarding-sports",
+        params: { name: name.trim(), city: city.trim(), college: college.trim() },
+      });
+    } catch (error: any) {
+      if (error.response?.status === 409) {
+        router.push("/onboarding-sports");
+      } else {
+        Alert.alert("Error", "Could not save your profile. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -62,13 +93,17 @@ export default function OnboardingProfileScreen() {
         <Pressable
           style={({ pressed }) => [
             styles.btn,
-            !canContinue && styles.btnDisabled,
+            (!canContinue || loading) && styles.btnDisabled,
             pressed && { opacity: 0.9 },
           ]}
-          onPress={() => router.push("/onboarding-sports")}
-          disabled={!canContinue}
+          onPress={handleContinue}
+          disabled={!canContinue || loading}
         >
-          <Text style={styles.btnText}>Continue</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Continue</Text>
+          )}
         </Pressable>
       </View>
     </SafeAreaView>

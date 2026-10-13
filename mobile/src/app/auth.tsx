@@ -1,5 +1,7 @@
 import { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -8,6 +10,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { auth } from "../config/firebase";
+import api from "../services/api";
 
 type Mode = "options" | "email";
 
@@ -16,17 +24,51 @@ export default function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  function handleContinue() {
-    if (isSignUp) {
-      router.push("/onboarding-profile");
-    } else {
-      router.replace("/(tabs)");
+  async function handleContinue() {
+    if (!email || !password) return;
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const token = await userCredential.user.getIdToken();
+
+        try {
+          await api.post("/users/me", {
+            full_name: email.split("@")[0],
+          });
+        } catch {
+          // profile may already exist
+        }
+
+        router.push("/onboarding-profile");
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+        router.replace("/(tabs)");
+      }
+    } catch (error: any) {
+      let message = "Something went wrong. Please try again.";
+
+      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        message = "Incorrect email or password.";
+      } else if (error.code === "auth/email-already-in-use") {
+        message = "An account with this email already exists.";
+      } else if (error.code === "auth/weak-password") {
+        message = "Password should be at least 6 characters.";
+      } else if (error.code === "auth/invalid-email") {
+        message = "Please enter a valid email address.";
+      }
+
+      Alert.alert("Error", message);
+    } finally {
+      setLoading(false);
     }
   }
 
   function handleGoogle() {
-    router.push("/onboarding-profile");
+    Alert.alert("Coming Soon", "Google sign-in will be added soon.");
   }
 
   return (
@@ -109,15 +151,19 @@ export default function AuthScreen() {
             <Pressable
               style={({ pressed }) => [
                 styles.submitBtn,
-                (!email || !password) && styles.submitBtnDisabled,
+                (!email || !password || loading) && styles.submitBtnDisabled,
                 pressed && { opacity: 0.9 },
               ]}
               onPress={handleContinue}
-              disabled={!email || !password}
+              disabled={!email || !password || loading}
             >
-              <Text style={styles.submitBtnText}>
-                {isSignUp ? "Create Account" : "Log In"}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitBtnText}>
+                  {isSignUp ? "Create Account" : "Log In"}
+                </Text>
+              )}
             </Pressable>
 
             <Pressable onPress={() => setIsSignUp(!isSignUp)}>

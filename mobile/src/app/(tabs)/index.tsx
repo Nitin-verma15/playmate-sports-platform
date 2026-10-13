@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect , useState } from "react";
 import {
+  ActivityIndicator,
+  RefreshControl,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,19 +10,24 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import api from "../../services/api";
+import { auth } from "../../config/firebase";
 
 type Game = {
-  id: string;
+  id: number;
   sport: string;
-  emoji: string;
   title: string;
   venue: string;
-  date: string;
-  time: string;
-  distance: string;
-  skill: "Beginner" | "Intermediate" | "Advanced";
-  players: number;
-  maxPlayers: number;
+  scheduled_at: string;
+  skill_level: "Beginner" | "Intermediate" | "Advanced";
+  current_players: number;
+  max_players: number;
+  status: string;
+  organizer_name: string;
+};
+
+const sportEmojis: Record<string, string> = {
+  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
 };
 
 const sports = [
@@ -44,93 +51,49 @@ const sportColors: Record<string, { text: string; bg: string }> = {
   Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
 };
 
-const games: Game[] = [
-  {
-    id: "1",
-    sport: "Football",
-    emoji: "⚽",
-    title: "Sunday Kickabout",
-    venue: "Central Park Ground A",
-    date: "Sun, 14 Sep",
-    time: "4:00 PM",
-    distance: "0.8 km",
-    skill: "Intermediate",
-    players: 14,
-    maxPlayers: 16,
-  },
-  {
-    id: "2",
-    sport: "Basketball",
-    emoji: "🏀",
-    title: "3v3 Street Hoops",
-    venue: "Campus Court B",
-    date: "Sat, 13 Sep",
-    time: "6:30 PM",
-    distance: "1.2 km",
-    skill: "Beginner",
-    players: 6,
-    maxPlayers: 6,
-  },
-  {
-    id: "3",
-    sport: "Cricket",
-    emoji: "🏏",
-    title: "Morning Cricket Session",
-    venue: "University Oval",
-    date: "Mon, 15 Sep",
-    time: "7:00 AM",
-    distance: "2.1 km",
-    skill: "Intermediate",
-    players: 8,
-    maxPlayers: 12,
-  },
-];
+
 
 function GameCard({ game }: { game: Game }) {
-  const isFull = game.players >= game.maxPlayers;
+  const isFull = game.current_players >= game.max_players;
   const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
-  const skc = skillColors[game.skill] ?? { text: "#64748B", bg: "#F1F5F9" };
-  const progress = (game.players / game.maxPlayers) * 100;
+  const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
+  const progress = (game.current_players / game.max_players) * 100;
+  const sportEmoji = sportEmojis[game.sport] ?? "🏅";
+  const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", {
+    weekday: "short", day: "numeric", month: "short",
+  });
+  const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", {
+    hour: "2-digit", minute: "2-digit",
+  });
 
   return (
     <Pressable
       style={({ pressed }) => [styles.gameCard, pressed && styles.cardPressed]}
-      onPress={() => router.push({ pathname: "/game-details", params: { id: game.id } })}
+      onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
     >
       <View style={styles.gameHeader}>
         <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
           <Text style={[styles.sportBadgeText, { color: sc.text }]}>
-            {game.emoji} {game.sport}
+            {sportEmoji} {game.sport}
           </Text>
         </View>
         <View style={[styles.gameIcon, { backgroundColor: sc.bg }]}>
-          <Text style={styles.gameIconText}>{game.emoji}</Text>
+          <Text style={styles.gameIconText}>{sportEmoji}</Text>
         </View>
       </View>
 
       <Text style={styles.gameTitle}>{game.title}</Text>
       <Text style={styles.infoText}>📍 {game.venue}</Text>
-      <Text style={styles.infoText}>
-        📅 {game.date}   •   🕐 {game.time}   •   📍 {game.distance}
-      </Text>
+      <Text style={styles.infoText}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
       <View style={styles.gameFooter}>
         <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill}</Text>
+          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
         </View>
-
         <View>
-          <Text style={styles.playerCount}>
-            {game.players}/{game.maxPlayers} players
-          </Text>
+          <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
           <View style={styles.progressBackground}>
-            <View
-              style={[
-                styles.progressBar,
-                { width: `${progress}%` },
-                isFull && { backgroundColor: "#DC2626" },
-              ]}
-            />
+            <View style={[styles.progressBar, { width: `${progress}%` }, isFull && { backgroundColor: "#DC2626" }]} />
           </View>
           {isFull && <Text style={styles.fullText}>FULL</Text>}
         </View>
@@ -139,8 +102,44 @@ function GameCard({ game }: { game: Game }) {
   );
 }
 
+
 export default function HomeScreen() {
   const [activeSport, setActiveSport] = useState<string | null>(null);
+const [games, setGames] = useState<Game[]>([]);
+const [loading, setLoading] = useState(true);
+const [refreshing, setRefreshing] = useState(false);
+const [userName, setUserName] = useState("Player");
+
+useEffect(() => {
+  fetchGames();
+  loadUser();
+}, []);
+
+async function fetchGames() {
+  try {
+    const res = await api.get("/games");
+    setGames(res.data.games || []);
+  } catch {
+    // show empty state if fails
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function loadUser() {
+  const user = auth.currentUser;
+  if (user?.displayName) {
+    setUserName(user.displayName);
+  } else if (user?.email) {
+    setUserName(user.email.split("@")[0]);
+  }
+}
+
+async function handleRefresh() {
+  setRefreshing(true);
+  await fetchGames();
+  setRefreshing(false);
+}
 
   function handleSportPress(sportName: string) {
     setActiveSport(sportName);
@@ -159,16 +158,18 @@ export default function HomeScreen() {
     router.push("/profile");
   }
 
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Good afternoon 👋</Text>
-            <Text style={styles.userName}>Arjun Mehta</Text>
+            <Text style={styles.userName}>{userName}</Text>
             <Text style={styles.location}>📍 Koramangala, Bangalore</Text>
           </View>
 
@@ -232,9 +233,19 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-        {games.map((game) => (
-          <GameCard key={game.id} game={game} />
-        ))}
+        {loading ? (
+          <ActivityIndicator color="#2563EB" style={{ marginTop: 30 }} />
+        ) : games.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>🏅</Text>
+            <Text style={styles.emptyTitle}>No games nearby</Text>
+            <Text style={styles.emptyText}>Be the first to create one!</Text>
+          </View>
+        ) : (
+          games.slice(0, 5).map((game) => (
+            <GameCard key={game.id} game={game} />
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -457,4 +468,8 @@ const styles = StyleSheet.create({
     textAlign: "right",
     marginTop: 3,
   },
+  emptyState: { alignItems: "center", paddingTop: 40 },
+  emptyEmoji: { fontSize: 36, marginBottom: 10 },
+  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  emptyText: { fontSize: 13, color: "#64748B", marginTop: 4 },
 });

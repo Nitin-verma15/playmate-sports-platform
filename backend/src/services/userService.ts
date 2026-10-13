@@ -103,3 +103,61 @@ export async function setUserSports(firebaseUid: string, sports: SportItem[]) {
     client.release();
   }
 }
+
+export async function getUserGames(firebaseUid: string, type?: string) {
+  const userResult = await pool.query(
+    "SELECT id FROM users WHERE firebase_uid = $1",
+    [firebaseUid]
+  );
+
+  if (userResult.rows.length === 0) {
+    return null;
+  }
+
+  const userId = userResult.rows[0].id;
+
+  let whereClause = "";
+
+  if (type === "upcoming") {
+    whereClause = `
+      WHERE (g.organizer_id = $1 OR gm.user_id = $1)
+        AND g.scheduled_at > NOW()
+        AND g.status IN ('OPEN', 'FULL')
+    `;
+  } else if (type === "joined") {
+    whereClause = `
+      WHERE gm.user_id = $1
+        AND g.organizer_id != $1
+    `;
+  } else if (type === "created") {
+    whereClause = `
+      WHERE g.organizer_id = $1
+    `;
+  } else if (type === "history") {
+    whereClause = `
+      WHERE (g.organizer_id = $1 OR gm.user_id = $1)
+        AND (g.scheduled_at <= NOW() OR g.status IN ('COMPLETED', 'CANCELLED'))
+    `;
+  } else {
+    whereClause = `
+      WHERE g.organizer_id = $1 OR gm.user_id = $1
+    `;
+  }
+
+  const query = `
+    SELECT DISTINCT
+      g.*,
+      u.full_name AS organizer_name,
+      COUNT(members.id)::int AS current_players
+    FROM games g
+    JOIN users u ON g.organizer_id = u.id
+    LEFT JOIN game_members gm ON g.id = gm.game_id
+    LEFT JOIN game_members members ON g.id = members.game_id
+    ${whereClause}
+    GROUP BY g.id, u.id
+    ORDER BY g.scheduled_at ASC
+  `;
+
+  const result = await pool.query(query, [userId]);
+  return result.rows;
+}
