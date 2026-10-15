@@ -8,16 +8,19 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "db:init": "tsc && node dist/scripts/init-db.js"
+    "db:init": "tsc && node dist/scripts/init-db.js",
+    "db:seed": "tsc && node dist/scripts/seed-games.js"
   },
   "private": true,
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "0.24.1",
     "cors": "2.8.6",
     "dotenv": "18.0.4",
     "express": "5.2.1",
     "firebase-admin": "14.5.0",
+    "groq-sdk": "1.6.0",
     "pg": "8.23.0",
     "zod": "4.6.5"
   },

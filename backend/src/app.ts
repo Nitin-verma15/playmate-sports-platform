@@ -4,6 +4,7 @@ import { pool } from "./config/database";
 import userRoutes from "./routes/userRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 import gameRoutes from "./routes/gameRoutes";
+import aiRoutes from "./routes/aiRoutes";
 
 
 const app = express();
@@ -30,6 +31,7 @@ app.get("/api/health", async (req, res) => {
 
 app.use("/api/users", userRoutes);
 app.use("/api/games", gameRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(errorHandler);
 
