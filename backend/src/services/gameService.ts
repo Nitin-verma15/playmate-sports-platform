@@ -70,7 +70,7 @@ export async function getGames(params: GetGamesQueryParams) {
     FROM games g
     JOIN users u ON g.organizer_id = u.id
     LEFT JOIN game_members gm ON g.id = gm.game_id
-    WHERE g.status = 'OPEN' AND g.scheduled_at > NOW()
+    WHERE g.status IN ('OPEN', 'FULL') AND g.scheduled_at > NOW()
   `;
 
   const values: any[] = [];
@@ -361,6 +361,15 @@ export async function leaveGame(gameId: number, firebaseUid: string) {
     if (inMembers.rows.length === 0) {
       await client.query("ROLLBACK");
       return { error: "NOT_IN_GAME" };
+    }
+
+    const isOrganizer = await client.query(
+      "SELECT id FROM games WHERE id = $1 AND organizer_id = $2",
+      [gameId, userId]
+    );
+    if (isOrganizer.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return { error: "ORGANIZER_CANNOT_LEAVE" };
     }
 
     await client.query(
