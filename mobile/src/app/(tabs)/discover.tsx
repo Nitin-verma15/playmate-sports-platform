@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { WebView } from "react-native-webview";
 import api from "../../services/api";
 import { useThemeContext } from "../../context/ThemeContext";
@@ -59,12 +60,20 @@ const sportColors: Record<string, { text: string; bg: string }> = {
   Football:   { text: "#2563EB", bg: "#EAF1FF" },
   Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
   Basketball: { text: "#D97706", bg: "#FEF3C7" },
-  Badminton:  { text: "#7C3AED", bg: "#F3E8FF" },
+  Badminton:  { text: "#0369A1", bg: "#E0F2FE" },
   Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
 };
 
 const sportEmojisMap: Record<string, string> = {
   Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
+};
+
+const cardShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 3,
 };
 
 function buildMapHtml(games: Game[]): string {
@@ -185,125 +194,135 @@ export default function DiscoverScreen() {
   });
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]} edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={[styles.title, { color: t.title }]}>Discover Games</Text>
-            <Text style={[styles.subtitle, { color: t.subtitle }]}>Find nearby games that match you.</Text>
-          </View>
-          <View style={styles.locationBadge}>
-            <Text style={styles.locationText}>📍</Text>
-          </View>
-        </View>
-
-        <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: t.border }]}>
-          <Text style={styles.searchIcon}>⌕</Text>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search games near you..."
-            placeholderTextColor="#94A3B8"
-            style={[styles.searchInput, { color: t.inputText }]}
-          />
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
+        {/* Gradient header */}
+        <LinearGradient
+          colors={["#1D4ED8", "#0EA5E9"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.gradientHeader}
         >
-          <FilterChip
-            label={selectedSport === "All" ? "Sport" : selectedSport}
-            active={selectedSport !== "All"}
-            onPress={() => setActiveDropdown(activeDropdown === "sport" ? null : "sport")}
-          />
-          <FilterChip
-            label={selectedSkill === "All" ? "Skill" : selectedSkill}
-            active={selectedSkill !== "All"}
-            onPress={() => setActiveDropdown(activeDropdown === "skill" ? null : "skill")}
-          />
-          <FilterChip
-            label={selectedDistance === 10 ? "Distance" : `${selectedDistance} km`}
-            active={selectedDistance !== 10}
-            onPress={() => setActiveDropdown(activeDropdown === "distance" ? null : "distance")}
-          />
-          <FilterChip
-            label={selectedTime === "Any" ? "Time" : selectedTime}
-            active={selectedTime !== "Any"}
-            onPress={() => setActiveDropdown(activeDropdown === "time" ? null : "time")}
-          />
-        </ScrollView>
-
-        <View style={styles.resultHeader}>
-          <Text style={[styles.resultCount, { color: t.subtitle }]}>
-            {loading ? "Loading..." : `${filteredGames.length} ${filteredGames.length === 1 ? "game" : "games"} found`}
-          </Text>
-          <View style={[styles.viewToggle, { backgroundColor: t.card, borderColor: t.border }]}>
-            <Pressable
-              style={[styles.viewButton, viewMode === "list" && styles.viewButtonActive]}
-              onPress={() => setViewMode("list")}
-            >
-              <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "list" && styles.viewButtonTextActive]}>
-                ☷ List
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.viewButton, viewMode === "map" && styles.viewButtonActive]}
-              onPress={() => setViewMode("map")}
-            >
-              <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "map" && styles.viewButtonTextActive]}>
-                ▣ Map
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color="#2563EB" style={{ marginTop: 40 }} />
-        ) : viewMode === "list" ? (
-          filteredGames.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>🔎</Text>
-              <Text style={[styles.emptyTitle, { color: t.title }]}>No games found</Text>
-              <Text style={[styles.emptyText, { color: t.subtitle }]}>Try changing your search or filters.</Text>
+          <View style={styles.headerInner}>
+            <View>
+              <Text style={styles.headerTitle}>Discover Games</Text>
+              <Text style={styles.headerSubtitle}>Find nearby games that match you.</Text>
             </View>
-          ) : (
-            filteredGames.map((game) => (
-              <GameCard key={game.id} game={game} />
-            ))
-          )
-        ) : (
-          <View style={styles.mapContainer}>
-            <WebView
-              style={styles.map}
-              originWhitelist={["*"]}
-              javaScriptEnabled
-              domStorageEnabled
-              onMessage={(e) => {
-                try {
-                  const data = JSON.parse(e.nativeEvent.data);
-                  if (data.gameId) {
-                    router.push({ pathname: "/game-details", params: { id: String(data.gameId) } });
-                  }
-                } catch {}
-              }}
-              source={{
-                html: buildMapHtml(filteredGames.filter((g) => g.latitude && g.longitude)),
-              }}
-            />
-            {filteredGames.filter((g) => g.latitude && g.longitude).length === 0 && (
-              <View style={styles.mapEmptyOverlay}>
-                <Text style={styles.mapEmptyText}>No games with location data yet. Create a game to see it here.</Text>
-              </View>
-            )}
+            <View style={styles.locationBadge}>
+              <Text style={styles.locationText}>📍</Text>
+            </View>
           </View>
-        )}
+        </LinearGradient>
+
+        <View style={styles.contentArea}>
+          <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: t.border }, cardShadow]}>
+            <Text style={styles.searchIcon}>⌕</Text>
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search games near you..."
+              placeholderTextColor="#94A3B8"
+              style={[styles.searchInput, { color: t.inputText }]}
+            />
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            <FilterChip
+              label={selectedSport === "All" ? "Sport" : selectedSport}
+              active={selectedSport !== "All"}
+              onPress={() => setActiveDropdown(activeDropdown === "sport" ? null : "sport")}
+            />
+            <FilterChip
+              label={selectedSkill === "All" ? "Skill" : selectedSkill}
+              active={selectedSkill !== "All"}
+              onPress={() => setActiveDropdown(activeDropdown === "skill" ? null : "skill")}
+            />
+            <FilterChip
+              label={selectedDistance === 10 ? "Distance" : `${selectedDistance} km`}
+              active={selectedDistance !== 10}
+              onPress={() => setActiveDropdown(activeDropdown === "distance" ? null : "distance")}
+            />
+            <FilterChip
+              label={selectedTime === "Any" ? "Time" : selectedTime}
+              active={selectedTime !== "Any"}
+              onPress={() => setActiveDropdown(activeDropdown === "time" ? null : "time")}
+            />
+          </ScrollView>
+
+          <View style={styles.resultHeader}>
+            <Text style={[styles.resultCount, { color: t.subtitle }]}>
+              {loading ? "Loading..." : `${filteredGames.length} ${filteredGames.length === 1 ? "game" : "games"} found`}
+            </Text>
+            <View style={[styles.viewToggle, { backgroundColor: t.card, borderColor: t.border }]}>
+              <Pressable
+                style={[styles.viewButton, viewMode === "list" && styles.viewButtonActive]}
+                onPress={() => setViewMode("list")}
+              >
+                <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "list" && styles.viewButtonTextActive]}>
+                  ☷ List
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.viewButton, viewMode === "map" && styles.viewButtonActive]}
+                onPress={() => setViewMode("map")}
+              >
+                <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "map" && styles.viewButtonTextActive]}>
+                  ▣ Map
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator color="#2563EB" style={{ marginTop: 40 }} />
+          ) : viewMode === "list" ? (
+            filteredGames.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>🔎</Text>
+                <Text style={[styles.emptyTitle, { color: t.title }]}>No games found</Text>
+                <Text style={[styles.emptyText, { color: t.subtitle }]}>Try changing your search or filters.</Text>
+              </View>
+            ) : (
+              filteredGames.map((game) => (
+                <GameCard key={game.id} game={game} />
+              ))
+            )
+          ) : (
+            <View style={styles.mapContainer}>
+              <WebView
+                style={styles.map}
+                originWhitelist={["*"]}
+                javaScriptEnabled
+                domStorageEnabled
+                onMessage={(e) => {
+                  try {
+                    const data = JSON.parse(e.nativeEvent.data);
+                    if (data.gameId) {
+                      router.push({ pathname: "/game-details", params: { id: String(data.gameId) } });
+                    }
+                  } catch {}
+                }}
+                source={{
+                  html: buildMapHtml(filteredGames.filter((g) => g.latitude && g.longitude)),
+                }}
+              />
+              {filteredGames.filter((g) => g.latitude && g.longitude).length === 0 && (
+                <View style={styles.mapEmptyOverlay}>
+                  <Text style={styles.mapEmptyText}>No games with location data yet. Create a game to see it here.</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       <DropdownModal visible={activeDropdown === "sport"} title="Select Sport" onClose={closeDropdown}>
@@ -415,10 +434,22 @@ function DropdownModal({ visible, title, onClose, children }: {
 function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   const { theme: t } = useThemeContext();
   return (
-    <Pressable onPress={onPress} style={[styles.filterChip, { backgroundColor: t.card, borderColor: t.border }, active && styles.filterChipActive]}>
-      <View pointerEvents="none" style={styles.filterChipInner}>
-        <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label} ▾</Text>
-      </View>
+    <Pressable
+      onPress={onPress}
+      style={[styles.filterChip, !active && { backgroundColor: t.card, borderColor: t.border }]}
+    >
+      {active ? (
+        <LinearGradient
+          colors={["#1D4ED8", "#0EA5E9"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.chipGradient}
+        >
+          <Text style={styles.filterChipTextActive}>{label} ▾</Text>
+        </LinearGradient>
+      ) : (
+        <Text style={[styles.filterChipText, { color: t.subtitle }]}>{label} ▾</Text>
+      )}
     </Pressable>
   );
 }
@@ -434,71 +465,116 @@ function GameCard({ game }: { game: Game }) {
   const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <Pressable
-      style={[styles.gameCard, { backgroundColor: t.card, borderColor: t.border }]}
-      onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
-    >
-      <View style={styles.gameHeader}>
-        <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
-          <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
-        </View>
-        <View style={[styles.gameIcon, { backgroundColor: sc.bg }]}>
-          <Text style={styles.gameIconText}>{emoji}</Text>
-        </View>
-      </View>
-
-      <Text style={[styles.gameTitle, { color: t.title }]}>{game.title}</Text>
-      <Text style={[styles.infoText, { color: t.subtitle }]}>📍 {game.venue}</Text>
-      <Text style={[styles.infoText, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
-
-      <View style={styles.gameFooter}>
-        <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
-        </View>
-        <View>
-          <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
-          <View style={styles.progressBackground}>
-            <View style={[styles.progressBar, { width: `${progress}%` }, isFull && styles.fullProgressBar]} />
+    <View style={[styles.cardWrapper, { borderLeftColor: sc.text }, cardShadow]}>
+      <Pressable
+        style={[styles.gameCard, { backgroundColor: t.card }]}
+        onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
+      >
+        <View style={styles.gameHeader}>
+          <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
+            <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
           </View>
-          {isFull && <Text style={styles.fullText}>FULL</Text>}
+          <View style={[styles.gameIcon, { backgroundColor: sc.bg }]}>
+            <Text style={styles.gameIconText}>{emoji}</Text>
+          </View>
         </View>
-      </View>
-    </Pressable>
+
+        <Text style={[styles.gameTitle, { color: t.title }]}>{game.title}</Text>
+        <Text style={[styles.infoText, { color: t.subtitle }]}>📍 {game.venue}</Text>
+        <Text style={[styles.infoText, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
+
+        <View style={styles.gameFooter}>
+          <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
+            <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
+          </View>
+          <View>
+            <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
+            <View style={styles.progressBackground}>
+              <View style={[styles.progressBar, { width: `${progress}%` as any }, isFull && styles.fullProgressBar]} />
+            </View>
+            {isFull && <Text style={styles.fullText}>FULL</Text>}
+          </View>
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F7F9FC" },
-  container: { paddingHorizontal: 16, paddingBottom: 28 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 },
-  title: { fontSize: 26, fontWeight: "700", color: "#111827" },
-  subtitle: { marginTop: 5, fontSize: 13, color: "#64748B" },
-  locationBadge: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#E8F0FF", alignItems: "center", justifyContent: "center" },
+  safeArea: { flex: 1 },
+  container: { paddingBottom: 28 },
+  gradientHeader: {
+    height: 80,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
+  headerInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerTitle: { fontSize: 22, fontWeight: "700", color: "#fff" },
+  headerSubtitle: { marginTop: 2, fontSize: 12, color: "rgba(255,255,255,0.8)" },
+  locationBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   locationText: { fontSize: 18 },
-  searchContainer: { height: 52, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0", borderRadius: 15, flexDirection: "row", alignItems: "center", paddingHorizontal: 13, marginBottom: 14 },
+  contentArea: { paddingHorizontal: 16 },
+  searchContainer: {
+    height: 56,
+    borderWidth: 1,
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 13,
+    marginTop: 14,
+    marginBottom: 14,
+  },
   searchIcon: { fontSize: 24, color: "#64748B", marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: "#111827" },
+  searchInput: { flex: 1, fontSize: 14 },
   filterRow: { paddingBottom: 18, gap: 8 },
-  filterChip: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
-  filterChipActive: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
-  filterChipInner: { flexDirection: "row", alignItems: "center" },
-  filterChipText: { fontSize: 12, color: "#475569", fontWeight: "600" },
-  filterChipTextActive: { color: "#fff" },
+  filterChip: {
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
+  chipGradient: {
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 18,
+  },
+  filterChipText: { fontSize: 12, fontWeight: "600", paddingHorizontal: 13, paddingVertical: 9 },
+  filterChipTextActive: { fontSize: 12, color: "#fff", fontWeight: "600" },
   resultHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 13 },
-  resultCount: { fontSize: 12, color: "#64748B", fontWeight: "600" },
-  viewToggle: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 10, borderWidth: 1, borderColor: "#E2E8F0", overflow: "hidden" },
+  resultCount: { fontSize: 12, fontWeight: "600" },
+  viewToggle: { flexDirection: "row", borderRadius: 10, borderWidth: 1, overflow: "hidden" },
   viewButton: { paddingHorizontal: 10, paddingVertical: 7 },
   viewButtonActive: { backgroundColor: "#2563EB" },
-  viewButtonText: { fontSize: 11, color: "#64748B", fontWeight: "600" },
+  viewButtonText: { fontSize: 11, fontWeight: "600" },
   viewButtonTextActive: { color: "#fff" },
-  gameCard: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E2E8F0", padding: 14, marginBottom: 13 },
+  cardWrapper: {
+    borderLeftWidth: 4,
+    borderRadius: 18,
+    marginBottom: 13,
+    overflow: "hidden",
+  },
+  gameCard: {
+    borderRadius: 18,
+    padding: 14,
+  },
   gameHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 9 },
   sportBadge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5 },
   sportBadgeText: { fontSize: 11, fontWeight: "700" },
   gameIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   gameIconText: { fontSize: 20 },
-  gameTitle: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 8 },
-  infoText: { fontSize: 12, color: "#64748B", marginBottom: 5 },
+  gameTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+  infoText: { fontSize: 12, marginBottom: 5 },
   gameFooter: { marginTop: 8, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   skillBadge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5 },
   skillText: { fontSize: 11, fontWeight: "700" },
@@ -509,22 +585,16 @@ const styles = StyleSheet.create({
   fullText: { fontSize: 9, color: "#DC2626", fontWeight: "700", textAlign: "right", marginTop: 3 },
   mapContainer: { height: 430, borderRadius: 20, overflow: "hidden", marginBottom: 13 },
   map: { width: "100%", height: "100%" },
-  markerPin: { backgroundColor: "#fff", borderRadius: 20, padding: 6, borderWidth: 2, borderColor: "#2563EB", alignItems: "center", justifyContent: "center" },
-  markerEmoji: { fontSize: 18 },
-  callout: { width: 180, padding: 8 },
-  calloutTitle: { fontSize: 13, fontWeight: "700", color: "#111827", marginBottom: 3 },
-  calloutSub: { fontSize: 11, color: "#64748B", marginBottom: 2 },
-  calloutLink: { fontSize: 11, color: "#2563EB", fontWeight: "600", marginTop: 4 },
   mapEmptyOverlay: { position: "absolute", bottom: 20, left: 20, right: 20, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 12, padding: 12, alignItems: "center" },
   mapEmptyText: { fontSize: 13, color: "#64748B" },
   emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 70 },
   emptyEmoji: { fontSize: 35, marginBottom: 10 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  emptyText: { marginTop: 6, fontSize: 13, color: "#64748B" },
+  emptyTitle: { fontSize: 18, fontWeight: "700" },
+  emptyText: { marginTop: 6, fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 12 },
+  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 12 },
   sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#E2E8F0", alignSelf: "center", marginBottom: 16 },
-  sheetTitle: { fontSize: 17, fontWeight: "700", color: "#111827", marginBottom: 12 },
+  sheetTitle: { fontSize: 17, fontWeight: "700", marginBottom: 12 },
   dropdownItem: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: "#F1F5F9", gap: 12 },
   dropdownItemActive: { backgroundColor: "#F8FAFF" },
   dropdownItemEmoji: { fontSize: 22, width: 32, textAlign: "center" },

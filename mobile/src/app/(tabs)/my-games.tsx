@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import api from "../../services/api";
 import { useThemeContext } from "../../context/ThemeContext";
@@ -30,7 +31,7 @@ const sportColors: Record<string, { text: string; bg: string }> = {
   Football:   { text: "#2563EB", bg: "#EAF1FF" },
   Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
   Basketball: { text: "#D97706", bg: "#FEF3C7" },
-  Badminton:  { text: "#7C3AED", bg: "#F3E8FF" },
+  Badminton:  { text: "#0369A1", bg: "#E0F2FE" },
   Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
 };
 
@@ -45,6 +46,14 @@ const typeMap: Record<TabKey, string> = {
   Joined:   "joined",
   Created:  "created",
   History:  "history",
+};
+
+const cardShadow = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 8,
+  elevation: 3,
 };
 
 export default function MyGamesScreen() {
@@ -77,22 +86,42 @@ export default function MyGamesScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: t.title }]}>My Games</Text>
-      </View>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]} edges={["bottom"]}>
+      {/* Gradient header */}
+      <LinearGradient
+        colors={["#1D4ED8", "#0EA5E9"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.header}
+      >
+        <Text style={styles.title}>My Games</Text>
+      </LinearGradient>
 
       <View style={styles.tabsWrap}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow}>
-          {tabs.map((tab) => (
-            <Pressable
-              key={tab}
-              style={[styles.tab, { backgroundColor: t.card, borderColor: t.border }, activeTab === tab && styles.tabActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, { color: t.subtitle }, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-            </Pressable>
-          ))}
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                style={[styles.tabPill, !isActive && { backgroundColor: t.card, borderColor: t.border }]}
+              >
+                {isActive ? (
+                  <LinearGradient
+                    colors={["#1D4ED8", "#0EA5E9"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.tabGradient}
+                  >
+                    <Text style={styles.tabTextActive}>{tab}</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text style={[styles.tabText, { color: t.subtitle }]}>{tab}</Text>
+                )}
+              </Pressable>
+            );
+          })}
         </ScrollView>
       </View>
 
@@ -132,40 +161,42 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
   const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <Pressable style={[styles.card, { backgroundColor: t.card, borderColor: t.border }]} onPress={onPress}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
-          <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
-        </View>
-        <View style={styles.cardRight}>
-          {isCompleted && (
-            <View style={styles.playedBadge}>
-              <Text style={styles.playedText}>PLAYED</Text>
+    <View style={[styles.cardWrapper, { borderLeftColor: sc.text }, cardShadow]}>
+      <Pressable style={[styles.card, { backgroundColor: t.card }]} onPress={onPress}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
+            <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
+          </View>
+          <View style={styles.cardRight}>
+            {isCompleted && (
+              <View style={styles.playedBadge}>
+                <Text style={styles.playedText}>PLAYED</Text>
+              </View>
+            )}
+            <View style={[styles.emojiBox, { backgroundColor: sc.bg }]}>
+              <Text style={styles.emojiText}>{emoji}</Text>
             </View>
-          )}
-          <View style={[styles.emojiBox, { backgroundColor: sc.bg }]}>
-            <Text style={styles.emojiText}>{emoji}</Text>
           </View>
         </View>
-      </View>
 
-      <Text style={[styles.cardTitle, { color: t.title }]}>{game.title}</Text>
-      <Text style={[styles.info, { color: t.subtitle }]}>📍 {game.venue}</Text>
-      <Text style={[styles.info, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
+        <Text style={[styles.cardTitle, { color: t.title }]}>{game.title}</Text>
+        <Text style={[styles.info, { color: t.subtitle }]}>📍 {game.venue}</Text>
+        <Text style={[styles.info, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
-      <View style={styles.cardFooter}>
-        <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
-        </View>
-        <View>
-          <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
-          <View style={styles.progressBg}>
-            <View style={[styles.progressBar, { width: `${progress}%` }, isFull && { backgroundColor: "#DC2626" }]} />
+        <View style={styles.cardFooter}>
+          <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
+            <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
           </View>
-          {isFull && !isCompleted && <Text style={styles.fullLabel}>FULL</Text>}
+          <View>
+            <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
+            <View style={styles.progressBg}>
+              <View style={[styles.progressBar, { width: `${progress}%` as any }, isFull && { backgroundColor: "#DC2626" }]} />
+            </View>
+            {isFull && !isCompleted && <Text style={styles.fullLabel}>FULL</Text>}
+          </View>
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -188,17 +219,39 @@ function EmptyState({ tab }: { tab: TabKey }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F7F9FC" },
-  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
-  title: { fontSize: 26, fontWeight: "700", color: "#111827" },
+  safeArea: { flex: 1 },
+  header: {
+    height: 80,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+  },
+  title: { fontSize: 26, fontWeight: "700", color: "#fff" },
   tabsWrap: { paddingLeft: 16 },
   tabsRow: { flexDirection: "row", gap: 8, paddingVertical: 12, paddingRight: 16 },
-  tab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
-  tabActive: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
-  tabText: { fontSize: 13, fontWeight: "600", color: "#475569" },
-  tabTextActive: { color: "#fff" },
+  tabPill: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "transparent",
+    overflow: "hidden",
+  },
+  tabGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  tabText: { fontSize: 13, fontWeight: "600", paddingHorizontal: 16, paddingVertical: 8 },
+  tabTextActive: { fontSize: 13, fontWeight: "600", color: "#fff" },
   list: { paddingHorizontal: 16, paddingTop: 4 },
-  card: { backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E2E8F0", padding: 14, marginBottom: 13 },
+  cardWrapper: {
+    borderLeftWidth: 4,
+    borderRadius: 18,
+    marginBottom: 13,
+    overflow: "hidden",
+  },
+  card: {
+    borderRadius: 18,
+    padding: 14,
+  },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 9 },
   sportBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
   sportBadgeText: { fontSize: 11, fontWeight: "700" },
@@ -207,8 +260,8 @@ const styles = StyleSheet.create({
   playedText: { fontSize: 9, fontWeight: "700", color: "#16A34A", letterSpacing: 0.5 },
   emojiBox: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   emojiText: { fontSize: 20 },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 8 },
-  info: { fontSize: 12, color: "#64748B", marginBottom: 4 },
+  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
+  info: { fontSize: 12, marginBottom: 4 },
   cardFooter: { marginTop: 8, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
   skillBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10 },
   skillText: { fontSize: 11, fontWeight: "700" },
@@ -218,6 +271,6 @@ const styles = StyleSheet.create({
   fullLabel: { fontSize: 9, color: "#DC2626", fontWeight: "700", textAlign: "right", marginTop: 3 },
   empty: { alignItems: "center", paddingTop: 80, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 40, marginBottom: 14 },
-  emptyTitle: { fontSize: 17, fontWeight: "700", color: "#111827", textAlign: "center", marginBottom: 8 },
-  emptySub: { fontSize: 13, color: "#64748B", textAlign: "center", lineHeight: 20 },
+  emptyTitle: { fontSize: 17, fontWeight: "700", textAlign: "center", marginBottom: 8 },
+  emptySub: { fontSize: 13, textAlign: "center", lineHeight: 20 },
 });
