@@ -41,26 +41,26 @@ const skillColors: Record<SkillLevel, { text: string; bg: string }> = {
 
 const maxPlayersOptions = [4, 6, 8, 10, 12, 16, 20, 22];
 
-const venueSuggestions = [
-  "Central Park Ground A",
-  "Campus Court B",
-  "University Oval",
-  "Sports Complex Court 2",
-  "Community Sports Ground",
-  "IIT Bangalore Ground",
-];
+type VenueSuggestion = {
+  display_name: string;
+  lat: string;
+  lon: string;
+};
 
 export default function CreateGameScreen() {
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [gameTitle, setGameTitle] = useState("");
   const [venue, setVenue] = useState("");
+  const [venueSuggestions, setVenueSuggestions] = useState<VenueSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [venueSearching, setVenueSearching] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [maxPlayers, setMaxPlayers] = useState<number>(10);
   const [skillLevel, setSkillLevel] = useState<SkillLevel | null>(null);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [venueDebounce, setVenueDebounce] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const sport = sports.find((s) => s.id === selectedSport);
 
@@ -110,9 +110,33 @@ export default function CreateGameScreen() {
 }
 
 
-  function handleVenuePick(suggestion: string) {
-    setVenue(suggestion);
+  function handleVenuePick(suggestion: VenueSuggestion) {
+    setVenue(suggestion.display_name.split(",").slice(0, 3).join(","));
     setShowSuggestions(false);
+    setVenueSuggestions([]);
+  }
+
+  async function searchVenue(text: string) {
+    if (text.length < 3) {
+      setVenueSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setVenueSearching(true);
+    try {
+      const encoded = encodeURIComponent(text);
+      const url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=5&addressdetails=1`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": "PlayMate/1.0 (college project)" },
+      });
+      const data = await res.json() as VenueSuggestion[];
+      setVenueSuggestions(data);
+      setShowSuggestions(data.length > 0);
+    } catch {
+      setVenueSuggestions([]);
+    } finally {
+      setVenueSearching(false);
+    }
   }
 
   return (
@@ -167,31 +191,35 @@ export default function CreateGameScreen() {
             <Text style={styles.venuePin}>📍</Text>
             <TextInput
               style={styles.venueInput}
-              placeholder="Search or tap on map..."
+              placeholder="Search venue or area..."
               placeholderTextColor="#94A3B8"
               value={venue}
               onChangeText={(v) => {
                 setVenue(v);
-                setShowSuggestions(v.length > 0);
+                if (venueDebounce) clearTimeout(venueDebounce);
+                const t = setTimeout(() => searchVenue(v), 600);
+                setVenueDebounce(t);
               }}
-              onFocus={() => setShowSuggestions(venue.length > 0)}
             />
           </View>
 
           {showSuggestions && (
             <View style={styles.suggestionsBox}>
-              {venueSuggestions
-                .filter((s) => s.toLowerCase().includes(venue.toLowerCase()))
-                .map((s) => (
-                  <Pressable
-                    key={s}
-                    style={styles.suggestionItem}
-                    onPress={() => handleVenuePick(s)}
-                  >
-                    <Text style={styles.suggestionPin}>📍</Text>
-                    <Text style={styles.suggestionText}>{s}</Text>
-                  </Pressable>
-                ))}
+              {venueSearching && (
+                <ActivityIndicator color="#2563EB" style={{ padding: 12 }} />
+              )}
+              {!venueSearching && venueSuggestions.map((s, i) => (
+                <Pressable
+                  key={i}
+                  style={styles.suggestionItem}
+                  onPress={() => handleVenuePick(s)}
+                >
+                  <Text style={styles.suggestionPin}>📍</Text>
+                  <Text style={styles.suggestionText} numberOfLines={2}>
+                    {s.display_name.split(",").slice(0, 3).join(",")}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
           )}
         </View>

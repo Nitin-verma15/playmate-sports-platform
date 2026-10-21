@@ -4,7 +4,7 @@ import {
   UpdateGameInput,
   GetGamesQueryParams,
 } from "../validators/gameSchemas";
-import { calculateDistance } from "./locationService";
+import { calculateDistance, geocodeVenue } from "./locationService";
 
 export async function createGame(firebaseUid: string, data: CreateGameInput) {
   const userResult = await pool.query(
@@ -18,6 +18,17 @@ export async function createGame(firebaseUid: string, data: CreateGameInput) {
 
   const userId = userResult.rows[0].id;
   const client = await pool.connect();
+
+  let latitude = data.latitude || null;
+  let longitude = data.longitude || null;
+
+  if (!latitude || !longitude) {
+    const coords = await geocodeVenue(data.venue);
+    if (coords) {
+      latitude = coords.lat;
+      longitude = coords.lng;
+    }
+  }
 
   try {
     await client.query("BEGIN");
@@ -36,8 +47,8 @@ export async function createGame(firebaseUid: string, data: CreateGameInput) {
       data.title,
       data.description || null,
       data.venue,
-      data.latitude || null,
-      data.longitude || null,
+      latitude,
+      longitude,
       data.scheduled_at,
       data.skill_level,
       data.max_players,
