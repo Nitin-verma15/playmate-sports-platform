@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../../services/api";
+import { useThemeContext } from "../../context/ThemeContext";
 
 type Sport = {
   id: string;
@@ -48,6 +49,7 @@ type VenueSuggestion = {
 };
 
 export default function CreateGameScreen() {
+  const { theme: t } = useThemeContext();
   const [selectedSport, setSelectedSport] = useState<string | null>(null);
   const [gameTitle, setGameTitle] = useState("");
   const [venue, setVenue] = useState("");
@@ -140,15 +142,15 @@ export default function CreateGameScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Create a Game</Text>
-          <Text style={styles.subtitle}>Organize a game for nearby players</Text>
+          <Text style={[styles.title, { color: t.title }]}>Create a Game</Text>
+          <Text style={[styles.subtitle, { color: t.subtitle }]}>Organize a game for nearby players</Text>
         </View>
 
         <Label text="Sport" required />
@@ -177,7 +179,7 @@ export default function CreateGameScreen() {
 
         <Label text="Game Title" required />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
           placeholder="e.g. Sunday Kickabout"
           placeholderTextColor="#94A3B8"
           value={gameTitle}
@@ -187,31 +189,31 @@ export default function CreateGameScreen() {
 
         <Label text="Venue / Location" required />
         <View>
-          <View style={styles.venueRow}>
+          <View style={[styles.venueRow, { backgroundColor: t.input, borderColor: t.border }]}>
             <Text style={styles.venuePin}>📍</Text>
             <TextInput
-              style={styles.venueInput}
+              style={[styles.venueInput, { color: t.inputText }]}
               placeholder="Search venue or area..."
               placeholderTextColor="#94A3B8"
               value={venue}
               onChangeText={(v) => {
                 setVenue(v);
                 if (venueDebounce) clearTimeout(venueDebounce);
-                const t = setTimeout(() => searchVenue(v), 600);
-                setVenueDebounce(t);
+                const tmr = setTimeout(() => searchVenue(v), 600);
+                setVenueDebounce(tmr);
               }}
             />
           </View>
 
           {showSuggestions && (
-            <View style={styles.suggestionsBox}>
+            <View style={[styles.suggestionsBox, { backgroundColor: t.card, borderColor: t.border }]}>
               {venueSearching && (
                 <ActivityIndicator color="#2563EB" style={{ padding: 12 }} />
               )}
               {!venueSearching && venueSuggestions.map((s, i) => (
                 <Pressable
                   key={i}
-                  style={styles.suggestionItem}
+                  style={[styles.suggestionItem, { borderBottomColor: t.rowBorder }]}
                   onPress={() => handleVenuePick(s)}
                 >
                   <Text style={styles.suggestionPin}>📍</Text>
@@ -236,7 +238,7 @@ export default function CreateGameScreen() {
           <View style={styles.half}>
             <Label text="Date" required />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="dd/mm/yyyy"
               placeholderTextColor="#94A3B8"
               value={date}
@@ -257,7 +259,7 @@ export default function CreateGameScreen() {
           <View style={styles.half}>
             <Label text="Time" required />
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="hh:mm AM/PM"
               placeholderTextColor="#94A3B8"
               value={time}
@@ -290,7 +292,7 @@ export default function CreateGameScreen() {
             return (
               <Pressable
                 key={n}
-                style={[styles.playerChip, active && styles.playerChipActive]}
+                style={[styles.playerChip, !active && { backgroundColor: t.card, borderColor: t.border }, active && styles.playerChipActive]}
                 onPress={() => setMaxPlayers(n)}
               >
                 <Text style={[styles.playerChipText, active && styles.playerChipTextActive]}>
@@ -313,7 +315,7 @@ export default function CreateGameScreen() {
                   styles.skillCard,
                   active
                     ? { backgroundColor: colors.bg, borderColor: colors.text }
-                    : styles.skillCardDefault,
+                    : [styles.skillCardDefault, { backgroundColor: t.card, borderColor: t.border }],
                 ]}
                 onPress={() => setSkillLevel(level)}
               >
@@ -337,7 +339,7 @@ export default function CreateGameScreen() {
 
         <Label text="Description" />
         <TextInput
-          style={[styles.input, styles.textArea]}
+          style={[styles.input, styles.textArea, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
           placeholder="Any extra details about the game... (optional)"
           placeholderTextColor="#94A3B8"
           value={description}
@@ -349,7 +351,7 @@ export default function CreateGameScreen() {
         />
 
         {isFormValid && (
-          <View style={styles.preview}>
+          <View style={[styles.preview, { backgroundColor: t.card, borderColor: t.border }]}>
             <Text style={styles.previewLabel}>Preview</Text>
             <View style={styles.previewHeader}>
               <View style={[styles.previewBadge, { backgroundColor: sport?.bg }]}>
@@ -359,9 +361,9 @@ export default function CreateGameScreen() {
               </View>
               <Text style={styles.previewEmoji}>{sport?.emoji}</Text>
             </View>
-            <Text style={styles.previewTitle}>{gameTitle}</Text>
-            <Text style={styles.previewInfo}>📍 {venue}</Text>
-            <Text style={styles.previewInfo}>📅 {date}  •  🕐 {time}</Text>
+            <Text style={[styles.previewTitle, { color: t.title }]}>{gameTitle}</Text>
+            <Text style={[styles.previewInfo, { color: t.subtitle }]}>📍 {venue}</Text>
+            <Text style={[styles.previewInfo, { color: t.subtitle }]}>📅 {date}  •  🕐 {time}</Text>
             <View style={styles.previewFooter}>
               <View style={[styles.previewSkill, { backgroundColor: skillColors[skillLevel!].bg }]}>
                 <Text style={[styles.previewSkillText, { color: skillColors[skillLevel!].text }]}>

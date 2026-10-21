@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useLocalSearchParams } from "expo-router";
 import api from "../services/api";
+import { useThemeContext } from "../context/ThemeContext";
 
 const levels = [
   { id: "beginner",     name: "Beginner",     desc: "Just starting out, learning the rules." },
@@ -19,6 +20,7 @@ const levels = [
 ];
 
 export default function OnboardingSkillScreen() {
+  const { theme: t } = useThemeContext();
   const [selected, setSelected] = useState<string | null>(null);
   const params = useLocalSearchParams<{ sports?: string }>();
   const [loading, setLoading] = useState(false);
@@ -50,19 +52,19 @@ export default function OnboardingSkillScreen() {
 
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <View style={styles.container}>
         <View style={styles.top}>
-          <Text style={styles.title}>Your skill level</Text>
+          <Text style={[styles.title, { color: t.title }]}>Your skill level</Text>
 
-          <Text style={styles.step}>Step 3 of 3</Text>
+          <Text style={[styles.step, { color: t.subtitle }]}>Step 3 of 3</Text>
           <View style={styles.progressRow}>
             <View style={[styles.progressBar, styles.progressActive]} />
             <View style={[styles.progressBar, styles.progressActive]} />
             <View style={[styles.progressBar, styles.progressActive]} />
           </View>
 
-          <Text style={styles.subtitle}>
+          <Text style={[styles.subtitle, { color: t.subtitle }]}>
             Choose your general skill level across your preferred sports.
           </Text>
 
@@ -72,17 +74,21 @@ export default function OnboardingSkillScreen() {
               return (
                 <Pressable
                   key={level.id}
-                  style={[styles.card, active && styles.cardActive]}
+                  style={[
+                    styles.card,
+                    !active && { backgroundColor: t.card, borderColor: t.border },
+                    active && styles.cardActive,
+                  ]}
                   onPress={() => setSelected(level.id)}
                 >
                   <View style={[styles.radio, active && styles.radioActive]}>
                     {active && <View style={styles.radioDot} />}
                   </View>
                   <View style={styles.cardInfo}>
-                    <Text style={[styles.cardName, active && { color: "#2563EB" }]}>
+                    <Text style={[styles.cardName, { color: t.title }, active && { color: "#2563EB" }]}>
                       {level.name}
                     </Text>
-                    <Text style={styles.cardDesc}>{level.desc}</Text>
+                    <Text style={[styles.cardDesc, { color: t.placeholder }]}>{level.desc}</Text>
                   </View>
                 </Pressable>
               );

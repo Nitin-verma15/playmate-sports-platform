@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../services/api";
+import { useThemeContext } from "../context/ThemeContext";
 
 type Game = {
   id: number;
@@ -57,6 +58,7 @@ const exampleQueries = [
 ];
 
 export default function AISearchScreen() {
+  const { theme: t } = useThemeContext();
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ExtractedFilters | null>(null);
@@ -87,19 +89,19 @@ export default function AISearchScreen() {
   const hasFilters = filters && Object.values(filters).some((v) => v !== null);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backArrow}>‹</Text>
+          <Pressable style={[styles.backBtn, { backgroundColor: t.card, borderColor: t.border }]} onPress={() => router.back()}>
+            <Text style={[styles.backArrow, { color: t.title }]}>‹</Text>
           </Pressable>
           <View style={styles.headerText}>
-            <Text style={styles.title}>AI Search</Text>
-            <Text style={styles.subtitle}>Natural-language game finder</Text>
+            <Text style={[styles.title, { color: t.title }]}>AI Search</Text>
+            <Text style={[styles.subtitle, { color: t.subtitle }]}>Natural-language game finder</Text>
           </View>
           <View style={styles.aiBadge}>
             <Text style={styles.aiText}>✨ AI</Text>
@@ -107,7 +109,7 @@ export default function AISearchScreen() {
         </View>
 
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
           placeholder="Find an intermediate football game tomorrow evening..."
           placeholderTextColor="#94A3B8"
           value={query}
@@ -135,16 +137,16 @@ export default function AISearchScreen() {
             {exampleQueries.map((ex) => (
               <Pressable
                 key={ex}
-                style={styles.exampleChip}
+                style={[styles.exampleChip, { backgroundColor: t.card, borderColor: t.border }]}
                 onPress={() => setQuery(ex)}
               >
-                <Text style={styles.exampleText}>"{ex}"</Text>
+                <Text style={[styles.exampleText, { color: t.subtitle }]}>"{ex}"</Text>
               </Pressable>
             ))}
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>Describe the game you're looking for</Text>
-              <Text style={styles.emptySub}>
+              <Text style={[styles.emptyTitle, { color: t.title }]}>Describe the game you're looking for</Text>
+              <Text style={[styles.emptySub, { color: t.subtitle }]}>
                 Include sport, skill level, distance,{"\n"}date or time — in plain English.
               </Text>
             </View>
@@ -168,17 +170,17 @@ export default function AISearchScreen() {
             {error ? (
               <View style={styles.noResults}>
                 <Text style={styles.noResultsEmoji}>😕</Text>
-                <Text style={styles.noResultsText}>{error}</Text>
+                <Text style={[styles.noResultsText, { color: t.subtitle }]}>{error}</Text>
               </View>
             ) : (
               <>
-                <Text style={styles.resultsLabel}>
+                <Text style={[styles.resultsLabel, { color: t.title }]}>
                   {results.length > 0 ? `Matching Games (${results.length})` : "No matching games found"}
                 </Text>
                 {results.length === 0 && (
                   <View style={styles.noResults}>
                     <Text style={styles.noResultsEmoji}>😕</Text>
-                    <Text style={styles.noResultsText}>
+                    <Text style={[styles.noResultsText, { color: t.subtitle }]}>
                       Try a different description or broaden your search.
                     </Text>
                   </View>
@@ -202,18 +204,20 @@ export default function AISearchScreen() {
 }
 
 function FilterChip({ icon, label, value }: { icon: string; label: string; value: string }) {
+  const { theme: t } = useThemeContext();
   return (
-    <View style={styles.filterChip}>
+    <View style={[styles.filterChip, { backgroundColor: t.card, borderColor: t.border }]}>
       <Text style={styles.filterChipIcon}>{icon}</Text>
       <View>
         <Text style={styles.filterChipLabel}>{label}</Text>
-        <Text style={styles.filterChipValue}>{value}</Text>
+        <Text style={[styles.filterChipValue, { color: t.title }]}>{value}</Text>
       </View>
     </View>
   );
 }
 
 function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
+  const { theme: t } = useThemeContext();
   const isFull = game.current_players >= game.max_players;
   const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
   const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
@@ -224,7 +228,7 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+      style={({ pressed }) => [styles.card, { backgroundColor: t.card, borderColor: t.border }, pressed && { opacity: 0.85 }]}
       onPress={onPress}
     >
       <View style={styles.cardHeader}>
@@ -236,9 +240,9 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
         </View>
       </View>
 
-      <Text style={styles.cardTitle}>{game.title}</Text>
-      <Text style={styles.info}>📍 {game.venue}</Text>
-      <Text style={styles.info}>📅 {dateStr}  •  🕐 {timeStr}</Text>
+      <Text style={[styles.cardTitle, { color: t.title }]}>{game.title}</Text>
+      <Text style={[styles.info, { color: t.subtitle }]}>📍 {game.venue}</Text>
+      <Text style={[styles.info, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
       <View style={styles.cardFooter}>
         <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>

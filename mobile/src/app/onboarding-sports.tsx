@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../services/api";
+import { useThemeContext } from "../context/ThemeContext";
 
 const sports = [
   { id: "football",   name: "Football",   emoji: "⚽", color: "#2563EB" },
@@ -20,6 +21,7 @@ const sports = [
 ];
 
 export default function OnboardingSportsScreen() {
+  const { theme: t } = useThemeContext();
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -48,19 +50,19 @@ export default function OnboardingSportsScreen() {
 
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <View style={styles.container}>
         <View style={styles.top}>
-          <Text style={styles.title}>Pick your sports</Text>
+          <Text style={[styles.title, { color: t.title }]}>Pick your sports</Text>
 
-          <Text style={styles.step}>Step 2 of 3</Text>
+          <Text style={[styles.step, { color: t.subtitle }]}>Step 2 of 3</Text>
           <View style={styles.progressRow}>
             <View style={[styles.progressBar, styles.progressActive]} />
             <View style={[styles.progressBar, styles.progressActive]} />
             <View style={styles.progressBar} />
           </View>
 
-          <Text style={styles.subtitle}>Select all sports you enjoy playing.</Text>
+          <Text style={[styles.subtitle, { color: t.subtitle }]}>Select all sports you enjoy playing.</Text>
 
           <View style={styles.grid}>
             {sports.map((sport) => {
@@ -70,6 +72,7 @@ export default function OnboardingSportsScreen() {
                   key={sport.id}
                   style={[
                     styles.card,
+                    !active && { backgroundColor: t.card, borderColor: t.border },
                     active && { borderColor: sport.color, borderWidth: 2, backgroundColor: "#F8FAFF" },
                   ]}
                   onPress={() => toggle(sport.id)}
@@ -80,7 +83,7 @@ export default function OnboardingSportsScreen() {
                     </View>
                   )}
                   <Text style={styles.cardEmoji}>{sport.emoji}</Text>
-                  <Text style={styles.cardName}>{sport.name}</Text>
+                  <Text style={[styles.cardName, { color: t.title }]}>{sport.name}</Text>
                 </Pressable>
               );
             })}

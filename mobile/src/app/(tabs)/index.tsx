@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../../services/api";
 import { auth } from "../../config/firebase";
+import { useThemeContext } from "../../context/ThemeContext";
 
 type Game = {
   id: number;
@@ -54,6 +55,7 @@ const sportColors: Record<string, { text: string; bg: string }> = {
 
 
 function GameCard({ game }: { game: Game }) {
+  const { theme: t } = useThemeContext();
   const isFull = game.current_players >= game.max_players;
   const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
   const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
@@ -68,7 +70,7 @@ function GameCard({ game }: { game: Game }) {
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.gameCard, pressed && styles.cardPressed]}
+      style={({ pressed }) => [styles.gameCard, { backgroundColor: t.card, borderColor: t.border }, pressed && styles.cardPressed]}
       onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
     >
       <View style={styles.gameHeader}>
@@ -82,9 +84,9 @@ function GameCard({ game }: { game: Game }) {
         </View>
       </View>
 
-      <Text style={styles.gameTitle}>{game.title}</Text>
-      <Text style={styles.infoText}>📍 {game.venue}</Text>
-      <Text style={styles.infoText}>📅 {dateStr}  •  🕐 {timeStr}</Text>
+      <Text style={[styles.gameTitle, { color: t.title }]}>{game.title}</Text>
+      <Text style={[styles.infoText, { color: t.subtitle }]}>📍 {game.venue}</Text>
+      <Text style={[styles.infoText, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
       <View style={styles.gameFooter}>
         <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
@@ -104,6 +106,7 @@ function GameCard({ game }: { game: Game }) {
 
 
 export default function HomeScreen() {
+  const { theme: t } = useThemeContext();
   const [activeSport, setActiveSport] = useState<string | null>(null);
 const [games, setGames] = useState<Game[]>([]);
 const [loading, setLoading] = useState(true);
@@ -160,7 +163,7 @@ async function handleRefresh() {
 
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -168,9 +171,9 @@ async function handleRefresh() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Good afternoon 👋</Text>
-            <Text style={styles.userName}>{userName}</Text>
-            <Text style={styles.location}>📍 Koramangala, Bangalore</Text>
+            <Text style={[styles.greeting, { color: t.subtitle }]}>Good afternoon 👋</Text>
+            <Text style={[styles.userName, { color: t.title }]}>{userName}</Text>
+            <Text style={[styles.location, { color: t.subtitle }]}>📍 Koramangala, Bangalore</Text>
           </View>
 
           <Pressable
@@ -182,7 +185,7 @@ async function handleRefresh() {
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.searchBar, pressed && styles.cardPressed]}
+          style={({ pressed }) => [styles.searchBar, { backgroundColor: t.card, borderColor: t.border }, pressed && styles.cardPressed]}
           onPress={handleSearchPress}
           android_ripple={{ color: "#E2E8F0" }}
         >
@@ -196,7 +199,7 @@ async function handleRefresh() {
         </Pressable>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Sports</Text>
+          <Text style={[styles.sectionTitle, { color: t.title }]}>Sports</Text>
         </View>
 
         <ScrollView
@@ -211,6 +214,7 @@ async function handleRefresh() {
                 key={sport.name}
                 style={[
                   styles.sportCard,
+                  { backgroundColor: t.card, borderColor: t.border },
                   isActive && { borderColor: sport.color, borderWidth: 2 },
                 ]}
                 onPress={() => handleSportPress(sport.name)}
@@ -218,7 +222,7 @@ async function handleRefresh() {
                 <View style={[styles.sportIconBg, { backgroundColor: sport.bg }]}>
                   <Text style={styles.sportEmoji}>{sport.emoji}</Text>
                 </View>
-                <Text style={[styles.sportName, isActive && { color: sport.color }]}>
+                <Text style={[styles.sportName, { color: t.title }, isActive && { color: sport.color }]}>
                   {sport.name}
                 </Text>
               </Pressable>
@@ -227,7 +231,7 @@ async function handleRefresh() {
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nearby Games</Text>
+          <Text style={[styles.sectionTitle, { color: t.title }]}>Nearby Games</Text>
           <Pressable onPress={handleSeeAll}>
             <Text style={styles.seeAll}>See all →</Text>
           </Pressable>
@@ -238,8 +242,8 @@ async function handleRefresh() {
         ) : games.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🏅</Text>
-            <Text style={styles.emptyTitle}>No games nearby</Text>
-            <Text style={styles.emptyText}>Be the first to create one!</Text>
+            <Text style={[styles.emptyTitle, { color: t.title }]}>No games nearby</Text>
+            <Text style={[styles.emptyText, { color: t.subtitle }]}>Be the first to create one!</Text>
           </View>
         ) : (
           games.slice(0, 5).map((game) => (

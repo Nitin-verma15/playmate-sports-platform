@@ -12,8 +12,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../services/api";
+import { useThemeContext } from "../context/ThemeContext";
 
 export default function OnboardingProfileScreen() {
+  const { theme: t } = useThemeContext();
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [college, setCollege] = useState("");
@@ -48,12 +50,12 @@ export default function OnboardingProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <View style={styles.container}>
         <View>
-          <Text style={styles.title}>Set up your profile</Text>
+          <Text style={[styles.title, { color: t.title }]}>Set up your profile</Text>
 
-          <Text style={styles.step}>Step 1 of 3</Text>
+          <Text style={[styles.step, { color: t.subtitle }]}>Step 1 of 3</Text>
           <View style={styles.progressRow}>
             <View style={[styles.progressBar, styles.progressActive]} />
             <View style={styles.progressBar} />
@@ -63,7 +65,7 @@ export default function OnboardingProfileScreen() {
           <View style={styles.form}>
             <Text style={styles.label}>Full Name</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="Enter your name"
               placeholderTextColor="#94A3B8"
               value={name}
@@ -72,7 +74,7 @@ export default function OnboardingProfileScreen() {
 
             <Text style={styles.label}>City</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="e.g. Bangalore"
               placeholderTextColor="#94A3B8"
               value={city}
@@ -81,7 +83,7 @@ export default function OnboardingProfileScreen() {
 
             <Text style={styles.label}>College / University</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="e.g. IIT Bangalore"
               placeholderTextColor="#94A3B8"
               value={college}

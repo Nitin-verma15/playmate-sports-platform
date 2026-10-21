@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import api from "../services/api";
+import { useThemeContext } from "../context/ThemeContext";
 
 type Game = {
   id: number;
@@ -45,6 +46,7 @@ const skillColors: Record<string, { text: string; bg: string }> = {
 };
 
 export default function GameDetailsScreen() {
+  const { theme: t } = useThemeContext();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,7 @@ export default function GameDetailsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
         <ActivityIndicator color="#2563EB" style={{ marginTop: 80 }} />
       </SafeAreaView>
     );
@@ -87,9 +89,9 @@ export default function GameDetailsScreen() {
 
   if (!game) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>Game not found</Text>
+          <Text style={[styles.errorTitle, { color: t.title }]}>Game not found</Text>
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Go Back</Text>
           </Pressable>
@@ -107,11 +109,11 @@ export default function GameDetailsScreen() {
   const initials = game.organizer_name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "??";
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Pressable style={styles.backRow} onPress={() => router.back()}>
-          <Text style={styles.backArrow}>‹</Text>
-          <Text style={styles.backText}>Back</Text>
+          <Text style={[styles.backArrow, { color: t.title }]}>‹</Text>
+          <Text style={[styles.backText, { color: t.title }]}>Back</Text>
         </Pressable>
 
         <View style={[styles.heroIcon, { backgroundColor: sc.bg }]}>
@@ -122,24 +124,24 @@ export default function GameDetailsScreen() {
           <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
         </View>
 
-        <Text style={styles.title}>{game.title}</Text>
+        <Text style={[styles.title, { color: t.title }]}>{game.title}</Text>
 
         {game.description ? (
-          <Text style={styles.description}>{game.description}</Text>
+          <Text style={[styles.description, { color: t.subtitle }]}>{game.description}</Text>
         ) : (
-          <Text style={styles.description}>
+          <Text style={[styles.description, { color: t.subtitle }]}>
             Join a local {game.sport.toLowerCase()} game and meet other players with similar interests and skill levels.
           </Text>
         )}
 
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: t.card, borderColor: t.border }]}>
           <InfoRow icon="📍" label="Venue" value={game.venue} />
           <InfoRow icon="📅" label="Date" value={dateStr} />
           <InfoRow icon="🕐" label="Time" value={timeStr} />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Skill Level</Text>
+          <Text style={[styles.sectionTitle, { color: t.title }]}>Skill Level</Text>
           <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
             <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
           </View>
@@ -147,7 +149,7 @@ export default function GameDetailsScreen() {
 
         <View style={styles.section}>
           <View style={styles.playerHeader}>
-            <Text style={styles.sectionTitle}>Players</Text>
+            <Text style={[styles.sectionTitle, { color: t.title }]}>Players</Text>
             <Text style={styles.playerCount}>{game.current_players}/{game.max_players}</Text>
           </View>
           <View style={styles.progressBackground}>
@@ -159,18 +161,18 @@ export default function GameDetailsScreen() {
               ]}
             />
           </View>
-          <Text style={styles.playerText}>
+          <Text style={[styles.playerText, { color: t.subtitle }]}>
             {isFull ? "This game is currently full." : `${game.max_players - game.current_players} slots available`}
           </Text>
         </View>
 
-        <View style={styles.organizerCard}>
+        <View style={[styles.organizerCard, { backgroundColor: t.card, borderColor: t.border }]}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View>
             <Text style={styles.organizerLabel}>Organized by</Text>
-            <Text style={styles.organizerName}>{game.organizer_name}</Text>
+            <Text style={[styles.organizerName, { color: t.title }]}>{game.organizer_name}</Text>
           </View>
         </View>
 
@@ -193,12 +195,13 @@ export default function GameDetailsScreen() {
 }
 
 function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  const { theme: t } = useThemeContext();
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoIcon}>{icon}</Text>
       <View>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
+        <Text style={[styles.infoLabel, { color: t.placeholder }]}>{label}</Text>
+        <Text style={[styles.infoValue, { color: t.title }]}>{value}</Text>
       </View>
     </View>
   );

@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import api from "../../services/api";
+import { useThemeContext } from "../../context/ThemeContext";
 
 type Game = {
   id: number;
@@ -131,6 +132,7 @@ function buildMapHtml(games: Game[]): string {
 type ActiveDropdown = "sport" | "skill" | "distance" | "time" | null;
 
 export default function DiscoverScreen() {
+  const { theme: t } = useThemeContext();
   const [search, setSearch] = useState("");
   const [selectedSport, setSelectedSport] = useState("All");
   const [selectedSkill, setSelectedSkill] = useState("All");
@@ -183,7 +185,7 @@ export default function DiscoverScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -192,22 +194,22 @@ export default function DiscoverScreen() {
       >
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>Discover Games</Text>
-            <Text style={styles.subtitle}>Find nearby games that match you.</Text>
+            <Text style={[styles.title, { color: t.title }]}>Discover Games</Text>
+            <Text style={[styles.subtitle, { color: t.subtitle }]}>Find nearby games that match you.</Text>
           </View>
           <View style={styles.locationBadge}>
             <Text style={styles.locationText}>📍</Text>
           </View>
         </View>
 
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: t.border }]}>
           <Text style={styles.searchIcon}>⌕</Text>
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search games near you..."
             placeholderTextColor="#94A3B8"
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: t.inputText }]}
           />
         </View>
 
@@ -239,15 +241,15 @@ export default function DiscoverScreen() {
         </ScrollView>
 
         <View style={styles.resultHeader}>
-          <Text style={styles.resultCount}>
+          <Text style={[styles.resultCount, { color: t.subtitle }]}>
             {loading ? "Loading..." : `${filteredGames.length} ${filteredGames.length === 1 ? "game" : "games"} found`}
           </Text>
-          <View style={styles.viewToggle}>
+          <View style={[styles.viewToggle, { backgroundColor: t.card, borderColor: t.border }]}>
             <Pressable
               style={[styles.viewButton, viewMode === "list" && styles.viewButtonActive]}
               onPress={() => setViewMode("list")}
             >
-              <Text style={[styles.viewButtonText, viewMode === "list" && styles.viewButtonTextActive]}>
+              <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "list" && styles.viewButtonTextActive]}>
                 ☷ List
               </Text>
             </Pressable>
@@ -255,7 +257,7 @@ export default function DiscoverScreen() {
               style={[styles.viewButton, viewMode === "map" && styles.viewButtonActive]}
               onPress={() => setViewMode("map")}
             >
-              <Text style={[styles.viewButtonText, viewMode === "map" && styles.viewButtonTextActive]}>
+              <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "map" && styles.viewButtonTextActive]}>
                 ▣ Map
               </Text>
             </Pressable>
@@ -268,8 +270,8 @@ export default function DiscoverScreen() {
           filteredGames.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyEmoji}>🔎</Text>
-              <Text style={styles.emptyTitle}>No games found</Text>
-              <Text style={styles.emptyText}>Try changing your search or filters.</Text>
+              <Text style={[styles.emptyTitle, { color: t.title }]}>No games found</Text>
+              <Text style={[styles.emptyText, { color: t.subtitle }]}>Try changing your search or filters.</Text>
             </View>
           ) : (
             filteredGames.map((game) => (
@@ -393,12 +395,13 @@ export default function DiscoverScreen() {
 function DropdownModal({ visible, title, onClose, children }: {
   visible: boolean; title: string; onClose: () => void; children: React.ReactNode;
 }) {
+  const { theme: t } = useThemeContext();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet} onPress={() => {}}>
+        <Pressable style={[styles.modalSheet, { backgroundColor: t.card }]} onPress={() => {}}>
           <View style={styles.sheetHandle} />
-          <Text style={styles.sheetTitle}>{title}</Text>
+          <Text style={[styles.sheetTitle, { color: t.title }]}>{title}</Text>
           {children}
           <TouchableOpacity style={styles.clearBtn} onPress={onClose}>
             <Text style={styles.clearBtnText}>Done</Text>
@@ -410,8 +413,9 @@ function DropdownModal({ visible, title, onClose, children }: {
 }
 
 function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const { theme: t } = useThemeContext();
   return (
-    <Pressable onPress={onPress} style={[styles.filterChip, active && styles.filterChipActive]}>
+    <Pressable onPress={onPress} style={[styles.filterChip, { backgroundColor: t.card, borderColor: t.border }, active && styles.filterChipActive]}>
       <View pointerEvents="none" style={styles.filterChipInner}>
         <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label} ▾</Text>
       </View>
@@ -420,6 +424,7 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
 }
 
 function GameCard({ game }: { game: Game }) {
+  const { theme: t } = useThemeContext();
   const isFull = game.current_players >= game.max_players;
   const progress = (game.current_players / game.max_players) * 100;
   const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
@@ -430,7 +435,7 @@ function GameCard({ game }: { game: Game }) {
 
   return (
     <Pressable
-      style={styles.gameCard}
+      style={[styles.gameCard, { backgroundColor: t.card, borderColor: t.border }]}
       onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
     >
       <View style={styles.gameHeader}>
@@ -442,9 +447,9 @@ function GameCard({ game }: { game: Game }) {
         </View>
       </View>
 
-      <Text style={styles.gameTitle}>{game.title}</Text>
-      <Text style={styles.infoText}>📍 {game.venue}</Text>
-      <Text style={styles.infoText}>📅 {dateStr}  •  🕐 {timeStr}</Text>
+      <Text style={[styles.gameTitle, { color: t.title }]}>{game.title}</Text>
+      <Text style={[styles.infoText, { color: t.subtitle }]}>📍 {game.venue}</Text>
+      <Text style={[styles.infoText, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
       <View style={styles.gameFooter}>
         <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>

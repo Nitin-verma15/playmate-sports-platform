@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../../services/api";
+import { useThemeContext } from "../../context/ThemeContext";
 
 type TabKey = "Upcoming" | "Joined" | "Created" | "History";
 
@@ -47,6 +48,7 @@ const typeMap: Record<TabKey, string> = {
 };
 
 export default function MyGamesScreen() {
+  const { theme: t } = useThemeContext();
   const [activeTab, setActiveTab] = useState<TabKey>("Upcoming");
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,9 +77,9 @@ export default function MyGamesScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>My Games</Text>
+        <Text style={[styles.title, { color: t.title }]}>My Games</Text>
       </View>
 
       <View style={styles.tabsWrap}>
@@ -85,10 +87,10 @@ export default function MyGamesScreen() {
           {tabs.map((tab) => (
             <Pressable
               key={tab}
-              style={[styles.tab, activeTab === tab && styles.tabActive]}
+              style={[styles.tab, { backgroundColor: t.card, borderColor: t.border }, activeTab === tab && styles.tabActive]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+              <Text style={[styles.tabText, { color: t.subtitle }, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
             </Pressable>
           ))}
         </ScrollView>
@@ -119,6 +121,7 @@ export default function MyGamesScreen() {
 }
 
 function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
+  const { theme: t } = useThemeContext();
   const isFull = game.current_players >= game.max_players;
   const isCompleted = game.status === "COMPLETED";
   const progress = (game.current_players / game.max_players) * 100;
@@ -129,7 +132,7 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
   const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable style={[styles.card, { backgroundColor: t.card, borderColor: t.border }]} onPress={onPress}>
       <View style={styles.cardHeader}>
         <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
           <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
@@ -146,9 +149,9 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
         </View>
       </View>
 
-      <Text style={styles.cardTitle}>{game.title}</Text>
-      <Text style={styles.info}>📍 {game.venue}</Text>
-      <Text style={styles.info}>📅 {dateStr}  •  🕐 {timeStr}</Text>
+      <Text style={[styles.cardTitle, { color: t.title }]}>{game.title}</Text>
+      <Text style={[styles.info, { color: t.subtitle }]}>📍 {game.venue}</Text>
+      <Text style={[styles.info, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
 
       <View style={styles.cardFooter}>
         <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
@@ -167,6 +170,7 @@ function GameCard({ game, onPress }: { game: Game; onPress: () => void }) {
 }
 
 function EmptyState({ tab }: { tab: TabKey }) {
+  const { theme: t } = useThemeContext();
   const messages: Record<TabKey, { emoji: string; title: string; sub: string }> = {
     Upcoming: { emoji: "📅", title: "No upcoming games", sub: "Join or create a game to get started." },
     Joined:   { emoji: "🏃", title: "You haven't joined any games yet", sub: "Discover games near you on the Discover tab." },
@@ -177,8 +181,8 @@ function EmptyState({ tab }: { tab: TabKey }) {
   return (
     <View style={styles.empty}>
       <Text style={styles.emptyEmoji}>{emoji}</Text>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptySub}>{sub}</Text>
+      <Text style={[styles.emptyTitle, { color: t.title }]}>{title}</Text>
+      <Text style={[styles.emptySub, { color: t.subtitle }]}>{sub}</Text>
     </View>
   );
 }
