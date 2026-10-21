@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 import api from "../../services/api";
 
 type Game = {
@@ -26,6 +27,8 @@ type Game = {
   max_players: number;
   status: string;
   organizer_name: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 const sportOptions = ["All", "Football", "Cricket", "Basketball", "Badminton"];
@@ -62,6 +65,68 @@ const sportColors: Record<string, { text: string; bg: string }> = {
 const sportEmojisMap: Record<string, string> = {
   Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
 };
+
+function buildMapHtml(games: Game[]): string {
+  const markers = games.map((g) => {
+    const emoji = sportEmojisMap[g.sport] ?? "🏅";
+    return `
+      L.marker([${Number(g.latitude)}, ${Number(g.longitude)}], {
+        icon: L.divIcon({
+          html: '<div style="background:#2563EB;color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${emoji}</div>',
+          className: '',
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
+        })
+      })
+        .addTo(map)
+        .bindPopup(\`
+          <div style="min-width:180px;font-family:sans-serif;padding:4px">
+            <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:4px">${g.title}</div>
+            <div style="font-size:12px;color:#64748B;margin-bottom:2px">📍 ${g.venue}</div>
+            <div style="font-size:12px;color:#64748B;margin-bottom:8px">${g.current_players}/${g.max_players} players · ${g.skill_level}</div>
+            <button onclick="window.ReactNativeWebView.postMessage(JSON.stringify({gameId:${g.id}}))"
+              style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:8px 0;font-size:13px;font-weight:600;width:100%;cursor:pointer">
+              View Game →
+            </button>
+          </div>
+        \`);
+    `;
+  }).join("\n");
+
+  const center = games.length > 0
+    ? [Number(games[0].latitude), Number(games[0].longitude)]
+    : [12.9716, 77.5946];
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { width:100vw; height:100vh; overflow:hidden; }
+    #map { width:100%; height:100%; }
+    .leaflet-popup-content-wrapper { border-radius:12px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map('map', { zoomControl: true }).setView([${center[0]}, ${center[1]}], 14);
+    L.tileLayer('https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=d21e96b7605e4f4d86e71ddb5ee8de53', {
+      maxZoom: 20,
+      attribution: '© Geoapify © OpenStreetMap'
+    }).addTo(map);
+    ${markers}
+    ${games.length > 1 ? `
+    var bounds = L.latLngBounds([${games.map(g => `[${Number(g.latitude)}, ${Number(g.longitude)}]`).join(',')}]);
+    map.fitBounds(bounds, { padding: [40, 40] });
+    ` : ''}
+  </script>
+</body>
+</html>`;
+}
 
 type ActiveDropdown = "sport" | "skill" | "distance" | "time" | null;
 
@@ -212,10 +277,29 @@ export default function DiscoverScreen() {
             ))
           )
         ) : (
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapEmoji}>🗺️</Text>
-            <Text style={styles.mapTitle}>Map View</Text>
-            <Text style={styles.mapText}>Google Maps integration coming in W7.</Text>
+          <View style={styles.mapContainer}>
+            <WebView
+              style={styles.map}
+              originWhitelist={["*"]}
+              javaScriptEnabled
+              domStorageEnabled
+              onMessage={(e) => {
+                try {
+                  const data = JSON.parse(e.nativeEvent.data);
+                  if (data.gameId) {
+                    router.push({ pathname: "/game-details", params: { id: String(data.gameId) } });
+                  }
+                } catch {}
+              }}
+              source={{
+                html: buildMapHtml(filteredGames.filter((g) => g.latitude && g.longitude)),
+              }}
+            />
+            {filteredGames.filter((g) => g.latitude && g.longitude).length === 0 && (
+              <View style={styles.mapEmptyOverlay}>
+                <Text style={styles.mapEmptyText}>No games with location data yet. Create a game to see it here.</Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -418,10 +502,16 @@ const styles = StyleSheet.create({
   progressBar: { height: "100%", borderRadius: 5, backgroundColor: "#F59E0B" },
   fullProgressBar: { backgroundColor: "#DC2626" },
   fullText: { fontSize: 9, color: "#DC2626", fontWeight: "700", textAlign: "right", marginTop: 3 },
-  mapPlaceholder: { height: 430, borderRadius: 20, backgroundColor: "#E9F0DD", alignItems: "center", justifyContent: "center", padding: 30, borderWidth: 1, borderColor: "#D8E2C5" },
-  mapEmoji: { fontSize: 42, marginBottom: 12 },
-  mapTitle: { fontSize: 20, fontWeight: "700", color: "#1F2937" },
-  mapText: { textAlign: "center", marginTop: 8, fontSize: 13, color: "#64748B", lineHeight: 19 },
+  mapContainer: { height: 430, borderRadius: 20, overflow: "hidden", marginBottom: 13 },
+  map: { width: "100%", height: "100%" },
+  markerPin: { backgroundColor: "#fff", borderRadius: 20, padding: 6, borderWidth: 2, borderColor: "#2563EB", alignItems: "center", justifyContent: "center" },
+  markerEmoji: { fontSize: 18 },
+  callout: { width: 180, padding: 8 },
+  calloutTitle: { fontSize: 13, fontWeight: "700", color: "#111827", marginBottom: 3 },
+  calloutSub: { fontSize: 11, color: "#64748B", marginBottom: 2 },
+  calloutLink: { fontSize: 11, color: "#2563EB", fontWeight: "600", marginTop: 4 },
+  mapEmptyOverlay: { position: "absolute", bottom: 20, left: 20, right: 20, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 12, padding: 12, alignItems: "center" },
+  mapEmptyText: { fontSize: 13, color: "#64748B" },
   emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 70 },
   emptyEmoji: { fontSize: 35, marginBottom: 10 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
