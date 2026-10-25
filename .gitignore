@@ -146,6 +146,9 @@ vite.config.ts.timestamp-*
 .vscode/
 .idea/
 
+# Agent task workspace (local only)
+.agents/
+
 
 # Firebase credentials (never push)
 serviceAccountKey.json
