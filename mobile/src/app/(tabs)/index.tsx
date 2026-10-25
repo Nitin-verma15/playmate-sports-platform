@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  RefreshControl,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import api from "../../services/api";
 import { auth } from "../../config/firebase";
 import { useThemeContext } from "../../context/ThemeContext";
+import { COLORS, RADII, SHADOWS } from "@/theme/tokens";
+import { ChalkPitchLines, SportTile } from "@/components/ui";
+import { MatchTicketCard } from "@/components/match-ticket-card";
 
 type Game = {
   id: number;
@@ -28,93 +30,13 @@ type Game = {
   organizer_name: string;
 };
 
-const sportEmojis: Record<string, string> = {
-  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
-};
-
 const sports = [
-  { name: "Football",   emoji: "⚽", gradient: ["#1E40AF", "#2563EB"] as [string, string] },
-  { name: "Cricket",    emoji: "🏏", gradient: ["#065F46", "#059669"] as [string, string] },
-  { name: "Basketball", emoji: "🏀", gradient: ["#92400E", "#D97706"] as [string, string] },
-  { name: "Badminton",  emoji: "🏸", gradient: ["#0369A1", "#0EA5E9"] as [string, string] },
-  { name: "Tennis",     emoji: "🎾", gradient: ["#C2410C", "#EA580C"] as [string, string] },
+  { name: "Football", emoji: "⚽" },
+  { name: "Cricket", emoji: "🏏" },
+  { name: "Basketball", emoji: "🏀" },
+  { name: "Badminton", emoji: "🏸" },
+  { name: "Tennis", emoji: "🎾" },
 ];
-
-const skillColors: Record<string, { text: string; bg: string }> = {
-  Beginner:     { text: "#16A34A", bg: "#E8F5E9" },
-  Intermediate: { text: "#D97706", bg: "#FEF3C7" },
-  Advanced:     { text: "#DC2626", bg: "#FEE2E2" },
-};
-
-const sportColors: Record<string, { text: string; bg: string }> = {
-  Football:   { text: "#2563EB", bg: "#EAF1FF" },
-  Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
-  Basketball: { text: "#D97706", bg: "#FEF3C7" },
-  Badminton:  { text: "#0369A1", bg: "#E0F2FE" },
-  Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
-};
-
-const cardShadow = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 3,
-};
-
-function GameCard({ game }: { game: Game }) {
-  const { theme: t } = useThemeContext();
-  const isFull = game.current_players >= game.max_players;
-  const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
-  const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
-  const progress = (game.current_players / game.max_players) * 100;
-  const sportEmoji = sportEmojis[game.sport] ?? "🏅";
-  const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", {
-    weekday: "short", day: "numeric", month: "short",
-  });
-  const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", {
-    hour: "2-digit", minute: "2-digit",
-  });
-
-  return (
-    <View style={[styles.cardWrapper, { borderLeftColor: sc.text }, cardShadow]}>
-      <Pressable
-        style={({ pressed }) => [styles.gameCard, { backgroundColor: t.card }, pressed && styles.cardPressed]}
-        onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
-      >
-        <View style={styles.gameHeader}>
-          <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
-            <Text style={[styles.sportBadgeText, { color: sc.text }]}>
-              {sportEmoji} {game.sport}
-            </Text>
-          </View>
-          <View style={[styles.gameIcon, { backgroundColor: sc.bg }]}>
-            <Text style={styles.gameIconText}>{sportEmoji}</Text>
-          </View>
-        </View>
-
-        <Text style={[styles.gameTitle, { color: t.title }]}>{game.title}</Text>
-        <Text style={[styles.infoText, { color: t.subtitle }]}>📍 {game.venue}</Text>
-        <Text style={[styles.infoText, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
-        <Text style={[styles.infoText, { color: t.subtitle }]}>👤 {game.organizer_name}</Text>
-
-        <View style={styles.gameFooter}>
-          <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-            <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
-          </View>
-          <View>
-            <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
-            <View style={styles.progressBackground}>
-              <View style={[styles.progressBar, { width: `${progress}%` as any }, isFull && { backgroundColor: "#DC2626" }]} />
-            </View>
-            {isFull && <Text style={styles.fullText}>FULL</Text>}
-          </View>
-        </View>
-      </Pressable>
-    </View>
-  );
-}
-
 
 export default function HomeScreen() {
   const { theme: t } = useThemeContext();
@@ -179,42 +101,42 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {/* Gradient Header */}
-        <LinearGradient
-          colors={["#1D4ED8", "#0EA5E9"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientHeader}
-        >
+        {/* Salmon header */}
+        <View style={styles.header}>
+          <ChalkPitchLines />
           <View style={styles.headerRow}>
-            <View>
+            <View style={styles.headerText}>
               <Text style={styles.greeting}>Good afternoon 👋</Text>
               <Text style={styles.userName}>{userName}</Text>
-              <Text style={styles.location}>📍 Koramangala, Bangalore</Text>
+              <View style={styles.locationRow}>
+                <View style={styles.locationDot} />
+                <Text style={styles.location}>Koramangala, Bangalore</Text>
+              </View>
             </View>
             <Pressable
-              style={({ pressed }) => [styles.profileButton, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.profileButton, pressed && { opacity: 0.85 }]}
               onPress={handleProfilePress}
             >
               <Text style={styles.profileIcon}>👤</Text>
             </Pressable>
           </View>
 
-          {/* Search bar inside gradient */}
+          {/* Search bar */}
           <Pressable
-            style={({ pressed }) => [styles.searchBar, pressed && { opacity: 0.9 }]}
+            style={({ pressed }) => [styles.searchBar, { backgroundColor: t.card }, pressed && { opacity: 0.9 }]}
             onPress={handleSearchPress}
-            android_ripple={{ color: "#E2E8F0" }}
           >
             <View pointerEvents="none" style={styles.searchBarInner}>
               <Text style={styles.searchIcon}>⌕</Text>
-              <Text style={styles.searchPlaceholder}>What do you want to play?</Text>
+              <Text style={[styles.searchPlaceholder, { color: t.placeholder }]}>
+                What do you want to play?
+              </Text>
               <View style={styles.aiBadge}>
                 <Text style={styles.aiText}>✨ AI</Text>
               </View>
             </View>
           </Pressable>
-        </LinearGradient>
+        </View>
 
         <View style={styles.contentArea}>
           <View style={styles.sectionHeader}>
@@ -226,26 +148,17 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.sportsRow}
           >
-            {sports.map((sport) => {
-              const isActive = activeSport === sport.name;
-              return (
-                <Pressable
-                  key={sport.name}
-                  style={[styles.sportCardWrapper, isActive && styles.sportCardActive]}
-                  onPress={() => handleSportPress(sport.name)}
-                >
-                  <LinearGradient
-                    colors={sport.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.sportCard}
-                  >
-                    <Text style={styles.sportEmoji}>{sport.emoji}</Text>
-                    <Text style={styles.sportName}>{sport.name}</Text>
-                  </LinearGradient>
-                </Pressable>
-              );
-            })}
+            {sports.map((sport) => (
+              <SportTile
+                key={sport.name}
+                name={sport.name}
+                emoji={sport.emoji}
+                selected={activeSport === sport.name}
+                onPress={() => handleSportPress(sport.name)}
+                mode="filter"
+                style={styles.sportTile}
+              />
+            ))}
           </ScrollView>
 
           <View style={styles.sectionHeader}>
@@ -256,28 +169,26 @@ export default function HomeScreen() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color="#2563EB" style={{ marginTop: 30 }} />
+            <ActivityIndicator color={COLORS.ink} style={{ marginTop: 30 }} />
           ) : games.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={{ fontSize: 48 }}>🏅</Text>
-              <Text style={{ fontSize: 24, marginTop: -8 }}>⚽</Text>
-              <Text style={{ fontSize: 36, marginTop: -12 }}>🏀</Text>
-              <Text style={[styles.emptyTitle, { color: t.title }]}>No games nearby yet</Text>
+              <Text style={styles.emptyEmoji}>📅</Text>
+              <Text style={[styles.emptyTitle, { color: COLORS.rust }]}>No games nearby yet</Text>
               <Text style={[styles.emptyText, { color: t.subtitle }]}>Be the first to create one!</Text>
-              <Pressable onPress={() => router.push("/create")} style={{ marginTop: 18 }}>
-                <LinearGradient
-                  colors={["#1D4ED8", "#0EA5E9"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.createBtn}
-                >
-                  <Text style={styles.createBtnText}>+ Create a Game</Text>
-                </LinearGradient>
+              <Pressable
+                style={({ pressed }) => [styles.createOneBtn, pressed && { opacity: 0.85 }]}
+                onPress={() => router.push("/create")}
+              >
+                <Text style={styles.createOneText}>Create One</Text>
               </Pressable>
             </View>
           ) : (
             games.slice(0, 5).map((game) => (
-              <GameCard key={game.id} game={game} />
+              <MatchTicketCard
+                key={game.id}
+                game={game}
+                onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
+              />
             ))
           )}
         </View>
@@ -287,16 +198,18 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    paddingBottom: 24,
-  },
-  gradientHeader: {
+  safeArea: { flex: 1 },
+  container: { paddingBottom: 24 },
+  header: {
+    backgroundColor: COLORS.salmon,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.ink,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 24,
+    overflow: "hidden",
   },
   headerRow: {
     flexDirection: "row",
@@ -304,75 +217,60 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  greeting: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.85)",
-    marginBottom: 4,
-  },
+  headerText: { flex: 1 },
+  greeting: { fontSize: 14, color: COLORS.ink, opacity: 0.8, marginBottom: 4 },
   userName: {
     fontSize: 27,
-    fontWeight: "700",
-    color: "#fff",
+    fontWeight: "800",
+    color: COLORS.ink,
     marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: -0.5,
   },
-  location: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.8)",
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  locationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.butter,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
   },
+  location: { fontSize: 13, color: COLORS.ink, opacity: 0.8 },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COLORS.butter,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
+    ...SHADOWS.hard,
   },
-  profileIcon: {
-    fontSize: 20,
-  },
+  profileIcon: { fontSize: 20 },
   searchBar: {
     height: 52,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.95)",
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
   },
-  searchBarInner: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  searchIcon: {
-    fontSize: 25,
-    color: "#64748B",
-    marginRight: 8,
-  },
-  searchPlaceholder: {
-    flex: 1,
-    color: "#94A3B8",
-    fontSize: 14,
-  },
+  searchBarInner: { flex: 1, flexDirection: "row", alignItems: "center" },
+  searchIcon: { fontSize: 22, color: COLORS.muted, marginRight: 8 },
+  searchPlaceholder: { flex: 1, fontSize: 14 },
   aiBadge: {
-    backgroundColor: "#E9F0FF",
+    backgroundColor: COLORS.butter,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 10,
   },
-  aiText: {
-    color: "#2563EB",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  contentArea: {
-    paddingHorizontal: 18,
-    paddingTop: 20,
-  },
+  aiText: { color: COLORS.ink, fontSize: 11, fontWeight: "800" },
+  contentArea: { paddingHorizontal: 18, paddingTop: 20 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -381,150 +279,35 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  seeAll: {
-    color: "#2563EB",
-    fontSize: 13,
-    fontWeight: "600",
+  seeAll: { color: COLORS.rust, fontSize: 13, fontWeight: "700" },
+  sportsRow: { paddingBottom: 24, gap: 12 },
+  sportTile: {
+    width: 88,
+    height: 88,
+    paddingVertical: 10,
   },
-  sportsRow: {
-    paddingBottom: 24,
-  },
-  sportCardWrapper: {
-    marginRight: 12,
-    borderRadius: 18,
-    overflow: "hidden",
-  },
-  sportCardActive: {
-    opacity: 0.85,
-  },
-  sportCard: {
-    width: 92,
-    borderRadius: 18,
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-  },
-  sportEmoji: {
-    fontSize: 28,
-    marginBottom: 7,
-    color: "#fff",
-  },
-  sportName: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  cardWrapper: {
-    borderLeftWidth: 4,
-    borderRadius: 18,
-    marginBottom: 14,
-    overflow: "hidden",
-  },
-  gameCard: {
-    borderRadius: 18,
-    padding: 16,
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  gameHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 9,
-  },
-  sportBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  sportBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  gameIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gameIconText: {
-    fontSize: 20,
-  },
-  gameTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 12,
-    marginBottom: 5,
-  },
-  gameFooter: {
-    marginTop: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  skillBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  skillText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  playerCount: {
-    fontSize: 11,
-    color: "#475569",
-    textAlign: "right",
-    marginBottom: 4,
-  },
-  progressBackground: {
-    width: 70,
-    height: 5,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 5,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#F59E0B",
-    borderRadius: 5,
-  },
-  fullText: {
-    fontSize: 9,
-    color: "#DC2626",
-    fontWeight: "700",
-    textAlign: "right",
-    marginTop: 3,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingTop: 50,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginTop: 12,
-  },
-  emptyText: {
-    fontSize: 13,
-    marginTop: 6,
-  },
-  createBtn: {
-    borderRadius: 14,
-    paddingVertical: 12,
+  emptyState: { alignItems: "center", paddingTop: 50 },
+  emptyEmoji: { fontSize: 48 },
+  emptyTitle: { fontSize: 18, fontWeight: "800", marginTop: 12, textTransform: "uppercase" },
+  emptyText: { fontSize: 13, marginTop: 6 },
+  createOneBtn: {
+    marginTop: 18,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    borderRadius: RADII.button,
     paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: COLORS.butter,
+    ...SHADOWS.hard,
   },
-  createBtnText: {
-    color: "#fff",
+  createOneText: {
+    color: COLORS.ink,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
+    textTransform: "uppercase",
   },
 });

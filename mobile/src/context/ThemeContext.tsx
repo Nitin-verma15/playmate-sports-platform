@@ -1,36 +1,39 @@
 import { createContext, useContext, useState } from "react";
+import { COLORS } from "../theme/tokens";
 
 const light = {
   dark: false,
-  bg: "#F7F9FC",
-  card: "#FFFFFF",
-  border: "#E2E8F0",
-  title: "#111827",
-  subtitle: "#64748B",
-  input: "#FFFFFF",
-  inputText: "#111827",
-  placeholder: "#94A3B8",
-  rowBorder: "#F1F5F9",
-  searchBg: "#FFFFFF",
-  pressedBg: "#F1F5F9",
+  bg: COLORS.paper,
+  card: COLORS.card,
+  border: COLORS.ink,
+  title: COLORS.ink,
+  subtitle: COLORS.muted,
+  input: COLORS.card,
+  inputText: COLORS.ink,
+  placeholder: COLORS.muted,
+  rowBorder: COLORS.track,
+  searchBg: COLORS.card,
+  pressedBg: COLORS.track,
+  headerBg: COLORS.salmon,
 };
 
 const dark = {
   dark: true,
-  bg: "#0F172A",
-  card: "#1E293B",
-  border: "#334155",
-  title: "#F1F5F9",
-  subtitle: "#94A3B8",
-  input: "#1E293B",
-  inputText: "#F1F5F9",
-  placeholder: "#64748B",
-  rowBorder: "#334155",
-  searchBg: "#1E293B",
-  pressedBg: "#0F172A",
+  bg: COLORS.darkBg,
+  card: COLORS.darkCard,
+  border: COLORS.darkBorder,
+  title: COLORS.darkText,
+  subtitle: COLORS.darkMuted,
+  input: COLORS.darkCard,
+  inputText: COLORS.darkText,
+  placeholder: COLORS.darkMuted,
+  rowBorder: COLORS.darkBorder,
+  searchBg: COLORS.darkCard,
+  pressedBg: COLORS.darkBg,
+  headerBg: COLORS.salmonDark,
 };
 
-export type Theme = typeof light;
+export type Theme = typeof light | typeof dark;
 
 type ThemeContextType = {
   theme: Theme;

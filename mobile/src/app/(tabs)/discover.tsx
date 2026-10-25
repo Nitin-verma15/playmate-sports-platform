@@ -13,10 +13,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { WebView } from "react-native-webview";
 import api from "../../services/api";
 import { useThemeContext } from "../../context/ThemeContext";
+import { COLORS, RADII, SPORT_COLORS, SPORT_EMOJIS } from "@/theme/tokens";
+import { ChalkPitchLines } from "@/components/ui";
+import { MatchTicketCard } from "@/components/match-ticket-card";
 
 type Game = {
   id: number;
@@ -39,12 +41,6 @@ const sportEmojis: Record<string, string> = {
 };
 
 const skillOptions = ["All", "Beginner", "Intermediate", "Advanced"];
-const skillColors: Record<string, { text: string; bg: string }> = {
-  All:          { text: "#475569", bg: "#F1F5F9" },
-  Beginner:     { text: "#16A34A", bg: "#E8F5E9" },
-  Intermediate: { text: "#D97706", bg: "#FEF3C7" },
-  Advanced:     { text: "#DC2626", bg: "#FEE2E2" },
-};
 
 const distanceOptions = [1, 3, 5, 10];
 
@@ -56,33 +52,14 @@ const timeRanges: Record<string, string> = {
   Night: "9:00 PM – late",
 };
 
-const sportColors: Record<string, { text: string; bg: string }> = {
-  Football:   { text: "#2563EB", bg: "#EAF1FF" },
-  Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
-  Basketball: { text: "#D97706", bg: "#FEF3C7" },
-  Badminton:  { text: "#0369A1", bg: "#E0F2FE" },
-  Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
-};
-
-const sportEmojisMap: Record<string, string> = {
-  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
-};
-
-const cardShadow = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 3,
-};
-
 function buildMapHtml(games: Game[]): string {
   const markers = games.map((g) => {
-    const emoji = sportEmojisMap[g.sport] ?? "🏅";
+    const emoji = SPORT_EMOJIS[g.sport] ?? "⚽";
+    const color = SPORT_COLORS[g.sport] ?? COLORS.track;
     return `
       L.marker([${Number(g.latitude)}, ${Number(g.longitude)}], {
         icon: L.divIcon({
-          html: '<div style="background:#2563EB;color:white;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)">${emoji}</div>',
+          html: '<div style="background:${color};color:${COLORS.ink};border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid ${COLORS.ink};box-shadow:0 3px 0 ${COLORS.ink}">${emoji}</div>',
           className: '',
           iconSize: [36, 36],
           iconAnchor: [18, 18],
@@ -91,11 +68,11 @@ function buildMapHtml(games: Game[]): string {
         .addTo(map)
         .bindPopup(\`
           <div style="min-width:180px;font-family:sans-serif;padding:4px">
-            <div style="font-size:14px;font-weight:700;color:#111827;margin-bottom:4px">${g.title}</div>
-            <div style="font-size:12px;color:#64748B;margin-bottom:2px">📍 ${g.venue}</div>
-            <div style="font-size:12px;color:#64748B;margin-bottom:8px">${g.current_players}/${g.max_players} players · ${g.skill_level}</div>
+            <div style="font-size:14px;font-weight:800;color:${COLORS.ink};margin-bottom:4px;text-transform:uppercase">${g.title}</div>
+            <div style="font-size:12px;color:${COLORS.muted};margin-bottom:2px">📍 ${g.venue}</div>
+            <div style="font-size:12px;color:${COLORS.muted};margin-bottom:8px">${g.current_players}/${g.max_players} players · ${g.skill_level}</div>
             <button onclick="window.ReactNativeWebView.postMessage(JSON.stringify({gameId:${g.id}}))"
-              style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:8px 0;font-size:13px;font-weight:600;width:100%;cursor:pointer">
+              style="background:${COLORS.butter};color:${COLORS.ink};border:2px solid ${COLORS.ink};border-radius:10px;padding:8px 0;font-size:13px;font-weight:800;width:100%;cursor:pointer;text-transform:uppercase">
               View Game →
             </button>
           </div>
@@ -115,9 +92,9 @@ function buildMapHtml(games: Game[]): string {
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { width:100vw; height:100vh; overflow:hidden; }
+    body { width:100vw; height:100vh; overflow:hidden; background:${COLORS.track}; }
     #map { width:100%; height:100%; }
-    .leaflet-popup-content-wrapper { border-radius:12px; }
+    .leaflet-popup-content-wrapper { border-radius:12px; border:2px solid ${COLORS.ink}; }
   </style>
 </head>
 <body>
@@ -201,32 +178,21 @@ export default function DiscoverScreen() {
         keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {/* Gradient header */}
-        <LinearGradient
-          colors={["#1D4ED8", "#0EA5E9"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradientHeader}
-        >
-          <View style={styles.headerInner}>
-            <View>
-              <Text style={styles.headerTitle}>Discover Games</Text>
-              <Text style={styles.headerSubtitle}>Find nearby games that match you.</Text>
-            </View>
-            <View style={styles.locationBadge}>
-              <Text style={styles.locationText}>📍</Text>
-            </View>
-          </View>
-        </LinearGradient>
+        {/* Salmon header */}
+        <View style={styles.header}>
+          <ChalkPitchLines />
+          <Text style={styles.headerTitle}>Discover Games</Text>
+          <Text style={styles.headerSubtitle}>Find nearby games that match you.</Text>
+        </View>
 
         <View style={styles.contentArea}>
-          <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: t.border }, cardShadow]}>
+          <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: COLORS.ink }]}>
             <Text style={styles.searchIcon}>⌕</Text>
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Search games near you..."
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={t.placeholder}
               style={[styles.searchInput, { color: t.inputText }]}
             />
           </View>
@@ -262,12 +228,12 @@ export default function DiscoverScreen() {
             <Text style={[styles.resultCount, { color: t.subtitle }]}>
               {loading ? "Loading..." : `${filteredGames.length} ${filteredGames.length === 1 ? "game" : "games"} found`}
             </Text>
-            <View style={[styles.viewToggle, { backgroundColor: t.card, borderColor: t.border }]}>
+            <View style={[styles.viewToggle, { borderColor: COLORS.ink }]}>
               <Pressable
                 style={[styles.viewButton, viewMode === "list" && styles.viewButtonActive]}
                 onPress={() => setViewMode("list")}
               >
-                <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "list" && styles.viewButtonTextActive]}>
+                <Text style={[styles.viewButtonText, viewMode === "list" && styles.viewButtonTextActive]}>
                   ☷ List
                 </Text>
               </Pressable>
@@ -275,7 +241,7 @@ export default function DiscoverScreen() {
                 style={[styles.viewButton, viewMode === "map" && styles.viewButtonActive]}
                 onPress={() => setViewMode("map")}
               >
-                <Text style={[styles.viewButtonText, { color: t.subtitle }, viewMode === "map" && styles.viewButtonTextActive]}>
+                <Text style={[styles.viewButtonText, viewMode === "map" && styles.viewButtonTextActive]}>
                   ▣ Map
                 </Text>
               </Pressable>
@@ -283,7 +249,7 @@ export default function DiscoverScreen() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color="#2563EB" style={{ marginTop: 40 }} />
+            <ActivityIndicator color={COLORS.ink} style={{ marginTop: 40 }} />
           ) : viewMode === "list" ? (
             filteredGames.length === 0 ? (
               <View style={styles.emptyState}>
@@ -293,7 +259,11 @@ export default function DiscoverScreen() {
               </View>
             ) : (
               filteredGames.map((game) => (
-                <GameCard key={game.id} game={game} />
+                <MatchTicketCard
+                  key={game.id}
+                  game={game}
+                  onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
+                />
               ))
             )
           ) : (
@@ -329,11 +299,11 @@ export default function DiscoverScreen() {
         {sportOptions.map((s) => (
           <TouchableOpacity
             key={s}
-            style={[styles.dropdownItem, selectedSport === s && styles.dropdownItemActive]}
+            style={[styles.dropdownItem, { borderBottomColor: t.rowBorder }, selectedSport === s && styles.dropdownItemActive]}
             onPress={() => { setSelectedSport(s); closeDropdown(); }}
           >
             <Text style={styles.dropdownItemEmoji}>{sportEmojis[s]}</Text>
-            <Text style={[styles.dropdownItemText, selectedSport === s && styles.dropdownItemTextActive]}>
+            <Text style={[styles.dropdownItemText, { color: t.title }, selectedSport === s && styles.dropdownItemTextActive]}>
               {s === "All" ? "All Sports" : s}
             </Text>
             {selectedSport === s && <Text style={styles.checkmark}>✓</Text>}
@@ -342,44 +312,41 @@ export default function DiscoverScreen() {
       </DropdownModal>
 
       <DropdownModal visible={activeDropdown === "skill"} title="Select Skill Level" onClose={closeDropdown}>
-        {skillOptions.map((s) => {
-          const sc = skillColors[s];
-          return (
-            <TouchableOpacity
-              key={s}
-              style={[styles.dropdownItem, selectedSkill === s && styles.dropdownItemActive]}
-              onPress={() => { setSelectedSkill(s); closeDropdown(); }}
-            >
-              <View style={[styles.skillDot, { backgroundColor: sc.bg }]}>
-                <Text style={[styles.skillDotText, { color: sc.text }]}>{s === "All" ? "★" : s[0]}</Text>
-              </View>
-              <View style={styles.dropdownItemInfo}>
-                <Text style={[styles.dropdownItemText, selectedSkill === s && styles.dropdownItemTextActive]}>
-                  {s === "All" ? "All Levels" : s}
+        {skillOptions.map((s) => (
+          <TouchableOpacity
+            key={s}
+            style={[styles.dropdownItem, { borderBottomColor: t.rowBorder }, selectedSkill === s && styles.dropdownItemActive]}
+            onPress={() => { setSelectedSkill(s); closeDropdown(); }}
+          >
+            <View style={styles.skillDot}>
+              <Text style={styles.skillDotText}>{s === "All" ? "★" : s[0]}</Text>
+            </View>
+            <View style={styles.dropdownItemInfo}>
+              <Text style={[styles.dropdownItemText, { color: t.title }, selectedSkill === s && styles.dropdownItemTextActive]}>
+                {s === "All" ? "All Levels" : s}
+              </Text>
+              {s !== "All" && (
+                <Text style={styles.dropdownItemSub}>
+                  {s === "Beginner" && "Just starting out"}
+                  {s === "Intermediate" && "Know the basics"}
+                  {s === "Advanced" && "Competitive level"}
                 </Text>
-                {s !== "All" && (
-                  <Text style={styles.dropdownItemSub}>
-                    {s === "Beginner" && "Just starting out"}
-                    {s === "Intermediate" && "Know the basics"}
-                    {s === "Advanced" && "Competitive level"}
-                  </Text>
-                )}
-              </View>
-              {selectedSkill === s && <Text style={styles.checkmark}>✓</Text>}
-            </TouchableOpacity>
-          );
-        })}
+              )}
+            </View>
+            {selectedSkill === s && <Text style={styles.checkmark}>✓</Text>}
+          </TouchableOpacity>
+        ))}
       </DropdownModal>
 
       <DropdownModal visible={activeDropdown === "distance"} title="Max Distance" onClose={closeDropdown}>
         {distanceOptions.map((d) => (
           <TouchableOpacity
             key={d}
-            style={[styles.dropdownItem, selectedDistance === d && styles.dropdownItemActive]}
+            style={[styles.dropdownItem, { borderBottomColor: t.rowBorder }, selectedDistance === d && styles.dropdownItemActive]}
             onPress={() => { setSelectedDistance(d); closeDropdown(); }}
           >
             <Text style={styles.dropdownItemEmoji}>📍</Text>
-            <Text style={[styles.dropdownItemText, selectedDistance === d && styles.dropdownItemTextActive]}>
+            <Text style={[styles.dropdownItemText, { color: t.title }, selectedDistance === d && styles.dropdownItemTextActive]}>
               Within {d} km
             </Text>
             {selectedDistance === d && <Text style={styles.checkmark}>✓</Text>}
@@ -388,22 +355,22 @@ export default function DiscoverScreen() {
       </DropdownModal>
 
       <DropdownModal visible={activeDropdown === "time"} title="Time of Day" onClose={closeDropdown}>
-        {timeOptions.map((t) => (
+        {timeOptions.map((opt) => (
           <TouchableOpacity
-            key={t}
-            style={[styles.dropdownItem, selectedTime === t && styles.dropdownItemActive]}
-            onPress={() => { setSelectedTime(t); closeDropdown(); }}
+            key={opt}
+            style={[styles.dropdownItem, { borderBottomColor: t.rowBorder }, selectedTime === opt && styles.dropdownItemActive]}
+            onPress={() => { setSelectedTime(opt); closeDropdown(); }}
           >
             <Text style={styles.dropdownItemEmoji}>
-              {t === "Any" ? "🕐" : t === "Morning" ? "🌅" : t === "Afternoon" ? "☀️" : t === "Evening" ? "🌆" : "🌙"}
+              {opt === "Any" ? "🕐" : opt === "Morning" ? "🌅" : opt === "Afternoon" ? "☀️" : opt === "Evening" ? "🌆" : "🌙"}
             </Text>
             <View style={styles.dropdownItemInfo}>
-              <Text style={[styles.dropdownItemText, selectedTime === t && styles.dropdownItemTextActive]}>
-                {t === "Any" ? "Any Time" : t}
+              <Text style={[styles.dropdownItemText, { color: t.title }, selectedTime === opt && styles.dropdownItemTextActive]}>
+                {opt === "Any" ? "Any Time" : opt}
               </Text>
-              {t !== "Any" && <Text style={styles.dropdownItemSub}>{timeRanges[t]}</Text>}
+              {opt !== "Any" && <Text style={styles.dropdownItemSub}>{timeRanges[opt]}</Text>}
             </View>
-            {selectedTime === t && <Text style={styles.checkmark}>✓</Text>}
+            {selectedTime === opt && <Text style={styles.checkmark}>✓</Text>}
           </TouchableOpacity>
         ))}
       </DropdownModal>
@@ -419,7 +386,7 @@ function DropdownModal({ visible, title, onClose, children }: {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={[styles.modalSheet, { backgroundColor: t.card }]} onPress={() => {}}>
-          <View style={styles.sheetHandle} />
+          <View style={[styles.sheetHandle, { backgroundColor: t.title }]} />
           <Text style={[styles.sheetTitle, { color: t.title }]}>{title}</Text>
           {children}
           <TouchableOpacity style={styles.clearBtn} onPress={onClose}>
@@ -432,179 +399,87 @@ function DropdownModal({ visible, title, onClose, children }: {
 }
 
 function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const { theme: t } = useThemeContext();
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.filterChip, !active && { backgroundColor: t.card, borderColor: t.border }]}
+      style={[styles.filterChip, { backgroundColor: active ? COLORS.butter : COLORS.card, borderColor: COLORS.ink }]}
     >
-      {active ? (
-        <LinearGradient
-          colors={["#1D4ED8", "#0EA5E9"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.chipGradient}
-        >
-          <Text style={styles.filterChipTextActive}>{label} ▾</Text>
-        </LinearGradient>
-      ) : (
-        <Text style={[styles.filterChipText, { color: t.subtitle }]}>{label} ▾</Text>
-      )}
+      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label} ▾</Text>
     </Pressable>
-  );
-}
-
-function GameCard({ game }: { game: Game }) {
-  const { theme: t } = useThemeContext();
-  const isFull = game.current_players >= game.max_players;
-  const progress = (game.current_players / game.max_players) * 100;
-  const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
-  const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
-  const emoji = sportEmojisMap[game.sport] ?? "🏅";
-  const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-  const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-
-  return (
-    <View style={[styles.cardWrapper, { borderLeftColor: sc.text }, cardShadow]}>
-      <Pressable
-        style={[styles.gameCard, { backgroundColor: t.card }]}
-        onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
-      >
-        <View style={styles.gameHeader}>
-          <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
-            <Text style={[styles.sportBadgeText, { color: sc.text }]}>{emoji} {game.sport}</Text>
-          </View>
-          <View style={[styles.gameIcon, { backgroundColor: sc.bg }]}>
-            <Text style={styles.gameIconText}>{emoji}</Text>
-          </View>
-        </View>
-
-        <Text style={[styles.gameTitle, { color: t.title }]}>{game.title}</Text>
-        <Text style={[styles.infoText, { color: t.subtitle }]}>📍 {game.venue}</Text>
-        <Text style={[styles.infoText, { color: t.subtitle }]}>📅 {dateStr}  •  🕐 {timeStr}</Text>
-
-        <View style={styles.gameFooter}>
-          <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-            <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
-          </View>
-          <View>
-            <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
-            <View style={styles.progressBackground}>
-              <View style={[styles.progressBar, { width: `${progress}%` as any }, isFull && styles.fullProgressBar]} />
-            </View>
-            {isFull && <Text style={styles.fullText}>FULL</Text>}
-          </View>
-        </View>
-      </Pressable>
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { paddingBottom: 28 },
-  gradientHeader: {
-    height: 80,
-    paddingTop: 12,
+  header: {
+    backgroundColor: COLORS.salmon,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.ink,
+    paddingTop: 48,
     paddingHorizontal: 16,
-    justifyContent: "center",
+    paddingBottom: 18,
+    overflow: "hidden",
   },
-  headerInner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: COLORS.ink,
+    textTransform: "uppercase",
+    letterSpacing: -0.3,
   },
-  headerTitle: { fontSize: 22, fontWeight: "700", color: "#fff" },
-  headerSubtitle: { marginTop: 2, fontSize: 12, color: "rgba(255,255,255,0.8)" },
-  locationBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  locationText: { fontSize: 18 },
-  contentArea: { paddingHorizontal: 16 },
+  headerSubtitle: { marginTop: 2, fontSize: 12, color: COLORS.ink, opacity: 0.8 },
+  contentArea: { paddingHorizontal: 16, paddingTop: 4 },
   searchContainer: {
-    height: 56,
-    borderWidth: 1,
-    borderRadius: 18,
+    height: 52,
+    borderWidth: 2,
+    borderRadius: 14,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 13,
     marginTop: 14,
     marginBottom: 14,
   },
-  searchIcon: { fontSize: 24, color: "#64748B", marginRight: 8 },
+  searchIcon: { fontSize: 22, color: COLORS.muted, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14 },
   filterRow: { paddingBottom: 18, gap: 8 },
   filterChip: {
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 1,
-  },
-  chipGradient: {
+    borderRadius: RADII.chip,
+    borderWidth: 2,
     paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: 18,
+    paddingVertical: 8,
   },
-  filterChipText: { fontSize: 12, fontWeight: "600", paddingHorizontal: 13, paddingVertical: 9 },
-  filterChipTextActive: { fontSize: 12, color: "#fff", fontWeight: "600" },
+  filterChipText: { fontSize: 12, fontWeight: "700", color: COLORS.muted },
+  filterChipTextActive: { color: COLORS.ink, fontWeight: "800" },
   resultHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 13 },
-  resultCount: { fontSize: 12, fontWeight: "600" },
-  viewToggle: { flexDirection: "row", borderRadius: 10, borderWidth: 1, overflow: "hidden" },
-  viewButton: { paddingHorizontal: 10, paddingVertical: 7 },
-  viewButtonActive: { backgroundColor: "#2563EB" },
-  viewButtonText: { fontSize: 11, fontWeight: "600" },
-  viewButtonTextActive: { color: "#fff" },
-  cardWrapper: {
-    borderLeftWidth: 4,
-    borderRadius: 18,
-    marginBottom: 13,
-    overflow: "hidden",
-  },
-  gameCard: {
-    borderRadius: 18,
-    padding: 14,
-  },
-  gameHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 9 },
-  sportBadge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5 },
-  sportBadgeText: { fontSize: 11, fontWeight: "700" },
-  gameIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  gameIconText: { fontSize: 20 },
-  gameTitle: { fontSize: 16, fontWeight: "700", marginBottom: 8 },
-  infoText: { fontSize: 12, marginBottom: 5 },
-  gameFooter: { marginTop: 8, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
-  skillBadge: { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5 },
-  skillText: { fontSize: 11, fontWeight: "700" },
-  playerCount: { fontSize: 11, color: "#475569", textAlign: "right", marginBottom: 4 },
-  progressBackground: { width: 70, height: 5, borderRadius: 5, backgroundColor: "#E5E7EB", overflow: "hidden" },
-  progressBar: { height: "100%", borderRadius: 5, backgroundColor: "#F59E0B" },
-  fullProgressBar: { backgroundColor: "#DC2626" },
-  fullText: { fontSize: 9, color: "#DC2626", fontWeight: "700", textAlign: "right", marginTop: 3 },
-  mapContainer: { height: 430, borderRadius: 20, overflow: "hidden", marginBottom: 13 },
+  resultCount: { fontSize: 12, fontWeight: "700" },
+  viewToggle: { flexDirection: "row", borderRadius: 12, borderWidth: 2, overflow: "hidden" },
+  viewButton: { paddingHorizontal: 12, paddingVertical: 7 },
+  viewButtonActive: { backgroundColor: COLORS.butter },
+  viewButtonText: { fontSize: 11, fontWeight: "700", color: COLORS.muted },
+  viewButtonTextActive: { color: COLORS.ink, fontWeight: "800" },
+  mapContainer: { height: 430, borderRadius: 16, overflow: "hidden", marginBottom: 13, borderWidth: 2, borderColor: COLORS.ink },
   map: { width: "100%", height: "100%" },
-  mapEmptyOverlay: { position: "absolute", bottom: 20, left: 20, right: 20, backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 12, padding: 12, alignItems: "center" },
-  mapEmptyText: { fontSize: 13, color: "#64748B" },
+  mapEmptyOverlay: { position: "absolute", bottom: 20, left: 20, right: 20, backgroundColor: COLORS.card, borderWidth: 2, borderColor: COLORS.ink, borderRadius: 12, padding: 12, alignItems: "center" },
+  mapEmptyText: { fontSize: 13, color: COLORS.muted },
   emptyState: { alignItems: "center", justifyContent: "center", paddingVertical: 70 },
   emptyEmoji: { fontSize: 35, marginBottom: 10 },
-  emptyTitle: { fontSize: 18, fontWeight: "700" },
+  emptyTitle: { fontSize: 18, fontWeight: "800", textTransform: "uppercase" },
   emptyText: { marginTop: 6, fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 12 },
-  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: "#E2E8F0", alignSelf: "center", marginBottom: 16 },
-  sheetTitle: { fontSize: 17, fontWeight: "700", marginBottom: 12 },
-  dropdownItem: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: "#F1F5F9", gap: 12 },
-  dropdownItemActive: { backgroundColor: "#F8FAFF" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(43,38,34,0.45)", justifyContent: "flex-end" },
+  modalSheet: { borderTopWidth: 3, borderTopColor: COLORS.ink, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 12 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
+  sheetTitle: { fontSize: 17, fontWeight: "800", marginBottom: 12, textTransform: "uppercase" },
+  dropdownItem: { flexDirection: "row", alignItems: "center", paddingVertical: 14, paddingHorizontal: 4, borderBottomWidth: 1, gap: 12 },
+  dropdownItemActive: { opacity: 1 },
   dropdownItemEmoji: { fontSize: 22, width: 32, textAlign: "center" },
   dropdownItemInfo: { flex: 1 },
-  dropdownItemText: { fontSize: 15, color: "#374151", fontWeight: "600" },
-  dropdownItemTextActive: { color: "#2563EB" },
-  dropdownItemSub: { fontSize: 12, color: "#94A3B8", marginTop: 2 },
-  checkmark: { fontSize: 16, color: "#2563EB", fontWeight: "700" },
-  skillDot: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  skillDotText: { fontSize: 13, fontWeight: "700" },
-  clearBtn: { marginTop: 16, height: 50, backgroundColor: "#2563EB", borderRadius: 14, alignItems: "center", justifyContent: "center" },
-  clearBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  dropdownItemText: { fontSize: 15, fontWeight: "700" },
+  dropdownItemTextActive: { color: COLORS.rust, fontWeight: "800" },
+  dropdownItemSub: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
+  checkmark: { fontSize: 16, color: COLORS.ink, fontWeight: "800" },
+  skillDot: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.track, borderWidth: 2, borderColor: COLORS.ink },
+  skillDotText: { fontSize: 13, fontWeight: "800", color: COLORS.ink },
+  clearBtn: { marginTop: 16, height: 50, backgroundColor: COLORS.butter, borderWidth: 2, borderColor: COLORS.ink, borderRadius: RADII.button, alignItems: "center", justifyContent: "center" },
+  clearBtnText: { color: COLORS.ink, fontSize: 15, fontWeight: "800", textTransform: "uppercase" },
 });

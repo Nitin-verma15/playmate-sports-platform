@@ -9,10 +9,11 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import api from "../services/api";
 import { useThemeContext } from "../context/ThemeContext";
+import { COLORS, RADII, SHADOWS, SPORT_COLORS, SPORT_EMOJIS } from "@/theme/tokens";
+import { SportTag } from "@/components/ui";
 
 type Game = {
   id: number;
@@ -28,42 +29,8 @@ type Game = {
   description?: string;
 };
 
-const sportEmojis: Record<string, string> = {
-  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
-};
-
-const sportColors: Record<string, { text: string; bg: string }> = {
-  Football:   { text: "#2563EB", bg: "#EAF1FF" },
-  Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
-  Basketball: { text: "#D97706", bg: "#FEF3C7" },
-  Badminton:  { text: "#0369A1", bg: "#E0F2FE" },
-  Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
-};
-
-const sportGradients: Record<string, [string, string]> = {
-  Football:   ["#1E40AF", "#2563EB"],
-  Cricket:    ["#065F46", "#059669"],
-  Basketball: ["#92400E", "#D97706"],
-  Badminton:  ["#0369A1", "#0EA5E9"],
-  Tennis:     ["#C2410C", "#EA580C"],
-};
-
-const skillColors: Record<string, { text: string; bg: string }> = {
-  Beginner:     { text: "#16A34A", bg: "#E8F5E9" },
-  Intermediate: { text: "#D97706", bg: "#FEF3C7" },
-  Advanced:     { text: "#DC2626", bg: "#FEE2E2" },
-};
-
-const cardShadow = {
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.08,
-  shadowRadius: 8,
-  elevation: 3,
-};
-
 export default function GameDetailsScreen() {
-  const { theme: t, isDark } = useThemeContext();
+  const { theme: t } = useThemeContext();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const [game, setGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,7 +66,7 @@ export default function GameDetailsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
-        <ActivityIndicator color="#2563EB" style={{ marginTop: 80 }} />
+        <ActivityIndicator color={COLORS.ink} style={{ marginTop: 80 }} />
       </SafeAreaView>
     );
   }
@@ -109,7 +76,10 @@ export default function GameDetailsScreen() {
       <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
         <View style={styles.errorContainer}>
           <Text style={[styles.errorTitle, { color: t.title }]}>Game not found</Text>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable
+            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.85 }]}
+            onPress={() => router.back()}
+          >
             <Text style={styles.backButtonText}>Go Back</Text>
           </Pressable>
         </View>
@@ -118,10 +88,8 @@ export default function GameDetailsScreen() {
   }
 
   const isFull = game.current_players >= game.max_players;
-  const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
-  const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
-  const emoji = sportEmojis[game.sport] ?? "🏅";
-  const gradientColors = sportGradients[game.sport] ?? (["#1D4ED8", "#0EA5E9"] as [string, string]);
+  const emoji = SPORT_EMOJIS[game.sport] ?? "⚽";
+  const accent = SPORT_COLORS[game.sport] ?? COLORS.track;
   const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
   const initials = game.organizer_name?.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase() ?? "??";
@@ -129,31 +97,25 @@ export default function GameDetailsScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: t.bg }]}>
-      {/* Hero gradient */}
-      <LinearGradient
-        colors={gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
-      >
-        {/* Back button */}
-        <Pressable style={styles.backRow} onPress={() => router.back()}>
+      {/* Salmon header with sport accent strip */}
+      <View style={styles.hero}>
+        <View style={[styles.accentStrip, { backgroundColor: accent }]} />
+
+        <Pressable
+          style={({ pressed }) => [styles.backRow, pressed && { opacity: 0.85 }]}
+          onPress={() => router.back()}
+        >
           <Text style={styles.backArrow}>‹</Text>
-          <Text style={styles.backText}>Back</Text>
         </Pressable>
 
-        {/* Hero content centered */}
         <View style={styles.heroContent}>
           <Text style={styles.heroEmoji}>{emoji}</Text>
           <Text style={styles.heroTitle}>{game.title}</Text>
-          <View style={styles.sportBadgePill}>
-            <Text style={styles.sportBadgePillText}>{emoji} {game.sport}</Text>
-          </View>
+          <SportTag sport={game.sport} emoji={emoji} />
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Description */}
         <View style={{ marginTop: 24 }}>
           {game.description ? (
             <Text style={[styles.description, { color: t.subtitle }]}>{game.description}</Text>
@@ -164,7 +126,7 @@ export default function GameDetailsScreen() {
           )}
         </View>
 
-        <View style={[styles.infoCard, { backgroundColor: t.card, borderColor: t.border }, cardShadow]}>
+        <View style={[styles.infoCard, { backgroundColor: t.card, borderColor: t.border }]}>
           <InfoRow icon="📍" label="Venue" value={game.venue} />
           <InfoRow icon="📅" label="Date" value={dateStr} />
           <InfoRow icon="🕐" label="Time" value={timeStr} />
@@ -172,54 +134,50 @@ export default function GameDetailsScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: t.title }]}>Skill Level</Text>
-          <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-            <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
+          <View style={[styles.skillBadge, { borderColor: COLORS.ink }]}>
+            <Text style={[styles.skillText, { color: t.title }]}>{game.skill_level}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
           <View style={styles.playerHeader}>
             <Text style={[styles.sectionTitle, { color: t.title }]}>Players</Text>
-            <Text style={styles.playerCount}>{game.current_players}/{game.max_players}</Text>
+            <Text style={[styles.playerCount, { color: t.title }]}>{game.current_players}/{game.max_players}</Text>
           </View>
-          <View style={styles.progressBackground}>
-            <LinearGradient
-              colors={isFull ? ["#EF4444", "#DC2626"] : ["#0EA5E9", "#06B6D4"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.progressBarGradient, { width: (playerPct + "%") as any }]}
-            />
+          <View style={[styles.progressBackground, { borderColor: COLORS.ink }]}>
+            <View style={[styles.progressBar, { width: `${playerPct}%` as any }]} />
           </View>
           <Text style={[styles.playerText, { color: t.subtitle }]}>
             {isFull ? "This game is currently full." : `${game.max_players - game.current_players} slots available`}
           </Text>
         </View>
 
-        <View style={[styles.organizerCard, { backgroundColor: t.card, borderColor: t.border }, cardShadow]}>
-          <LinearGradient
-            colors={["#1D4ED8", "#0EA5E9"]}
-            style={styles.organizerAvatar}
-          >
+        <View style={[styles.organizerCard, { backgroundColor: t.card, borderColor: t.border }]}>
+          <View style={styles.organizerAvatar}>
             <Text style={styles.organizerAvatarText}>{initials}</Text>
-          </LinearGradient>
+          </View>
           <View>
-            <Text style={[styles.organizerLabel, { color: t.placeholder }]}>Organized by</Text>
+            <Text style={[styles.organizerLabel, { color: t.subtitle }]}>Organized by</Text>
             <Text style={[styles.organizerName, { color: t.title }]}>{game.organizer_name}</Text>
           </View>
         </View>
 
-        <Pressable onPress={handleJoin} disabled={joining || isFull} style={{ marginTop: 20 }}>
-          <LinearGradient
-            colors={isFull ? ["#94A3B8", "#64748B"] : ["#1D4ED8", "#0EA5E9"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.joinButton}
-          >
-            {joining
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.joinButtonText}>{isFull ? "Join Waitlist" : "Join Game ✓"}</Text>
-            }
-          </LinearGradient>
+        <Pressable
+          onPress={handleJoin}
+          disabled={joining || isFull}
+          style={({ pressed }) => [
+            styles.joinButton,
+            { backgroundColor: isFull ? COLORS.ink : COLORS.butter },
+            pressed && !isFull && !joining && { transform: [{ translateY: 3 }] },
+          ]}
+        >
+          {joining ? (
+            <ActivityIndicator color={COLORS.card} />
+          ) : (
+            <Text style={[styles.joinButtonText, { color: isFull ? COLORS.card : COLORS.ink }]}>
+              {isFull ? "Join Waitlist" : "Join Game ✓"}
+            </Text>
+          )}
         </Pressable>
 
         <View style={{ height: 32 }} />
@@ -234,7 +192,7 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
     <View style={styles.infoRow}>
       <Text style={styles.infoIcon}>{icon}</Text>
       <View>
-        <Text style={[styles.infoLabel, { color: t.placeholder }]}>{label}</Text>
+        <Text style={[styles.infoLabel, { color: t.subtitle }]}>{label}</Text>
         <Text style={[styles.infoValue, { color: t.title }]}>{value}</Text>
       </View>
     </View>
@@ -245,190 +203,123 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   safeArea: { flex: 1 },
   hero: {
-    height: 220,
+    backgroundColor: COLORS.salmon,
     paddingTop: 50,
     paddingHorizontal: 20,
+    paddingBottom: 20,
     position: "relative",
   },
-  backRow: {
+  accentStrip: {
     position: "absolute",
-    top: 50,
-    left: 16,
-    flexDirection: "row",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.ink,
+  },
+  backRow: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: COLORS.ink,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     alignItems: "center",
-    zIndex: 10,
+    justifyContent: "center",
+    ...SHADOWS.hard,
   },
   backArrow: {
-    fontSize: 30,
+    fontSize: 28,
     lineHeight: 30,
-    color: "#fff",
-    marginRight: 5,
+    color: COLORS.card,
+    fontWeight: "800",
+    marginTop: -4,
   },
-  backText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  heroContent: {
-    alignItems: "center",
-    marginTop: 16,
-  },
-  heroEmoji: {
-    fontSize: 52,
-    marginBottom: 8,
-  },
+  heroContent: { alignItems: "center", marginTop: 16 },
+  heroEmoji: { fontSize: 52, marginBottom: 8 },
   heroTitle: {
     fontSize: 22,
-    fontWeight: "700",
-    color: "#fff",
+    fontWeight: "800",
+    color: COLORS.ink,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: -0.3,
   },
-  sportBadgePill: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  sportBadgePillText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  container: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 4,
-  },
+  container: { padding: 16, paddingBottom: 32 },
+  description: { fontSize: 14, lineHeight: 21, marginBottom: 4 },
   infoCard: {
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: RADII.card,
+    borderWidth: 2,
     marginTop: 20,
     padding: 16,
+    ...SHADOWS.hard,
   },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  infoIcon: {
-    width: 34,
-    fontSize: 17,
-  },
-  infoLabel: {
-    fontSize: 11,
-    marginBottom: 2,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  section: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 9,
-  },
+  infoRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  infoIcon: { width: 34, fontSize: 17 },
+  infoLabel: { fontSize: 11, marginBottom: 2, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.3 },
+  infoValue: { fontSize: 14, fontWeight: "700" },
+  section: { marginTop: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: "800", marginBottom: 9, textTransform: "uppercase", letterSpacing: 0.3 },
   skillBadge: {
     alignSelf: "flex-start",
-    borderRadius: 10,
-    paddingHorizontal: 11,
+    borderRadius: RADII.chip,
+    borderWidth: 2,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  skillText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  playerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 9,
-  },
-  playerCount: {
-    fontSize: 14,
-    color: "#334155",
-    fontWeight: "700",
-  },
+  skillText: { fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
+  playerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 9 },
+  playerCount: { fontSize: 14, fontWeight: "800" },
   progressBackground: {
-    height: 12,
-    borderRadius: 10,
-    backgroundColor: "#E2E8F0",
+    height: 10,
+    borderRadius: 6,
+    borderWidth: 2,
+    backgroundColor: COLORS.track,
     overflow: "hidden",
   },
-  progressBarGradient: {
-    height: "100%",
-    borderRadius: 10,
-  },
-  playerText: {
-    marginTop: 7,
-    fontSize: 12,
-  },
+  progressBar: { height: "100%", backgroundColor: COLORS.butter },
+  playerText: { marginTop: 7, fontSize: 12 },
   organizerCard: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1,
+    borderRadius: RADII.card,
+    borderWidth: 2,
     padding: 14,
     marginTop: 20,
+    ...SHADOWS.hard,
   },
   organizerAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
+    backgroundColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 11,
   },
-  organizerAvatarText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  organizerLabel: {
-    fontSize: 11,
-    marginBottom: 2,
-  },
-  organizerName: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  organizerAvatarText: { color: COLORS.card, fontWeight: "800", fontSize: 13 },
+  organizerLabel: { fontSize: 11, marginBottom: 2, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.3 },
+  organizerName: { fontSize: 14, fontWeight: "800" },
   joinButton: {
     height: 54,
-    borderRadius: 16,
+    borderRadius: RADII.button,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 20,
+    ...SHADOWS.hard,
   },
-  joinButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 20,
-  },
-  errorTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 15,
-  },
+  joinButtonText: { fontSize: 16, fontWeight: "800", textTransform: "uppercase" },
+  errorContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 20 },
+  errorTitle: { fontSize: 20, fontWeight: "800", marginBottom: 15, textTransform: "uppercase" },
   backButton: {
-    backgroundColor: "#2563EB",
+    backgroundColor: COLORS.ink,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 12,
   },
-  backButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
+  backButtonText: { color: COLORS.card, fontWeight: "800", textTransform: "uppercase" },
 });

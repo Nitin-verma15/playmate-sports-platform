@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  ActivityIndicator, 
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -9,99 +7,75 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import api from "../services/api";
 import { useThemeContext } from "../context/ThemeContext";
+import { COLORS, RADII, SHADOWS, SPORT_COLORS, SPORT_EMOJIS } from "../theme/tokens";
 
 const sports = [
-  { id: "football",   name: "Football",   emoji: "⚽", color: "#2563EB" },
-  { id: "cricket",    name: "Cricket",    emoji: "🏏", color: "#16A34A" },
-  { id: "basketball", name: "Basketball", emoji: "🏀", color: "#D97706" },
-  { id: "badminton",  name: "Badminton",  emoji: "🏸", color: "#7C3AED" },
-  { id: "tennis",     name: "Tennis",     emoji: "🎾", color: "#EA580C" },
+  { id: "football",   name: "Football" },
+  { id: "cricket",    name: "Cricket" },
+  { id: "basketball", name: "Basketball" },
+  { id: "badminton",  name: "Badminton" },
+  { id: "tennis",     name: "Tennis" },
 ];
 
 export default function OnboardingSportsScreen() {
   const { theme: t } = useThemeContext();
   const [selected, setSelected] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
 
   function toggle(id: string) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
+    setSelected((prev) => prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]);
   }
 
   const canContinue = selected.length > 0;
-  async function handleContinue() {
-  if (!canContinue) return;
-  setLoading(true);
-  try {
-  router.push({
-  pathname: "/onboarding-skill",
-  params: { sports: selected.join(",") },
-});
-;
-  } catch {
-    Alert.alert("Error", "Something went wrong. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-}
-
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
-      <View style={styles.container}>
-        <View style={styles.top}>
-          <Text style={[styles.title, { color: t.title }]}>Pick your sports</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]} edges={["bottom"]}>
+      <View style={[styles.header, { backgroundColor: t.headerBg }]}>
+        <Text style={styles.title}>PICK YOUR SPORTS</Text>
+        <Text style={[styles.step, { color: COLORS.ink }]}>Step 2 of 3</Text>
+        <View style={styles.progressRow}>
+          {[true, true, false].map((active, i) => (
+            <View key={i} style={[styles.progressBlock, { backgroundColor: active ? COLORS.butter : COLORS.track, borderColor: COLORS.ink }]} />
+          ))}
+        </View>
+        <Text style={[styles.subtitle, { color: COLORS.ink }]}>Select all sports you enjoy playing.</Text>
+      </View>
 
-          <Text style={[styles.step, { color: t.subtitle }]}>Step 2 of 3</Text>
-          <View style={styles.progressRow}>
-            <View style={[styles.progressBar, styles.progressActive]} />
-            <View style={[styles.progressBar, styles.progressActive]} />
-            <View style={styles.progressBar} />
-          </View>
-
-          <Text style={[styles.subtitle, { color: t.subtitle }]}>Select all sports you enjoy playing.</Text>
-
-          <View style={styles.grid}>
-            {sports.map((sport) => {
-              const active = selected.includes(sport.id);
-              return (
-                <Pressable
-                  key={sport.id}
-                  style={[
-                    styles.card,
-                    !active && { backgroundColor: t.card, borderColor: t.border },
-                    active && { borderColor: sport.color, borderWidth: 2, backgroundColor: "#F8FAFF" },
-                  ]}
-                  onPress={() => toggle(sport.id)}
-                >
-                  {active && (
-                    <View style={[styles.check, { backgroundColor: sport.color }]}>
-                      <Text style={styles.checkText}>✓</Text>
-                    </View>
-                  )}
-                  <Text style={styles.cardEmoji}>{sport.emoji}</Text>
-                  <Text style={[styles.cardName, { color: t.title }]}>{sport.name}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
+      <View style={styles.body}>
+        <View style={styles.grid}>
+          {sports.map((sport) => {
+            const active = selected.includes(sport.id);
+            const sportName = sport.name;
+            const sportColor = SPORT_COLORS[sportName] ?? COLORS.track;
+            const emoji = SPORT_EMOJIS[sportName] ?? "🏅";
+            return (
+              <Pressable
+                key={sport.id}
+                style={[
+                  styles.tile,
+                  { backgroundColor: active ? sportColor : t.card, borderColor: COLORS.ink },
+                  active && { transform: [{ rotate: "-2deg" }], ...SHADOWS.hard },
+                ]}
+                onPress={() => toggle(sport.id)}
+              >
+                {active && (
+                  <View style={styles.checkBadge}>
+                    <Text style={styles.checkText}>✓</Text>
+                  </View>
+                )}
+                <Text style={styles.tileEmoji}>{emoji}</Text>
+                <Text style={[styles.tileName, { color: COLORS.ink }]}>{sport.name}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <Pressable
-          style={({ pressed }) => [
-            styles.btn,
-            !canContinue && styles.btnDisabled,
-            pressed && { opacity: 0.9 },
-          ]}
-          onPress={handleContinue}
-          disabled={!canContinue || loading}
-
+          style={[styles.btn, !canContinue && { backgroundColor: COLORS.track, borderColor: COLORS.track, shadowOpacity: 0 }]}
+          onPress={() => router.push({ pathname: "/onboarding-skill", params: { sports: selected.join(",") } })}
+          disabled={!canContinue}
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Continue</Text>}
-
+          <Text style={styles.btnText}>CONTINUE</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -109,42 +83,54 @@ export default function OnboardingSportsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 32, justifyContent: "space-between" },
-  top: { flex: 1 },
-  title: { fontSize: 24, fontWeight: "700", color: "#111827" },
-  step: { fontSize: 13, color: "#64748B", marginTop: 14, marginBottom: 8 },
-  progressRow: { flexDirection: "row", gap: 6, marginBottom: 24 },
-  progressBar: { flex: 1, height: 4, borderRadius: 2, backgroundColor: "#E2E8F0" },
-  progressActive: { backgroundColor: "#2563EB" },
-  subtitle: { fontSize: 14, color: "#64748B", marginBottom: 20 },
-
+  safeArea: { flex: 1 },
+  header: {
+    paddingTop: 48,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.ink,
+  },
+  title: { fontSize: 28, fontWeight: "800", color: COLORS.ink, letterSpacing: -0.3, textTransform: "uppercase" },
+  step: { fontSize: 12, fontWeight: "600", marginTop: 8, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 },
+  progressRow: { flexDirection: "row", gap: 6, marginBottom: 12 },
+  progressBlock: { flex: 1, height: 8, borderRadius: 4, borderWidth: 1 },
+  subtitle: { fontSize: 14, opacity: 0.8 },
+  body: { flex: 1, padding: 20, justifyContent: "space-between" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  card: {
+  tile: {
     width: "47%",
     height: 90,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderRadius: RADII.card,
+    borderWidth: 2,
     justifyContent: "center",
     paddingHorizontal: 16,
+    gap: 4,
   },
-  check: {
+  checkBadge: {
     position: "absolute",
     top: 8,
     right: 8,
+    backgroundColor: COLORS.ink,
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 4,
     alignItems: "center",
     justifyContent: "center",
   },
-  checkText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  cardEmoji: { fontSize: 28, marginBottom: 6 },
-  cardName: { fontSize: 14, fontWeight: "700", color: "#111827" },
-
-  btn: { height: 54, backgroundColor: "#2563EB", borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  btnDisabled: { backgroundColor: "#CBD5E1" },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  checkText: { color: COLORS.card, fontSize: 11, fontWeight: "800" },
+  tileEmoji: { fontSize: 26 },
+  tileName: { fontSize: 14, fontWeight: "700" },
+  btn: {
+    height: 54,
+    backgroundColor: COLORS.butter,
+    borderRadius: RADII.button,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+    ...SHADOWS.hard,
+  },
+  btnText: { color: COLORS.ink, fontSize: 17, fontWeight: "800", letterSpacing: 0.5 },
 });
