@@ -4,7 +4,7 @@ import {
   UpdateGameInput,
   GetGamesQueryParams,
 } from "../validators/gameSchemas";
-import { calculateDistance } from "./locationService";
+import { calculateDistance, geocodeVenue } from "./locationService";
 
 export async function createGame(firebaseUid: string, data: CreateGameInput) {
   const userResult = await pool.query(
@@ -18,6 +18,17 @@ export async function createGame(firebaseUid: string, data: CreateGameInput) {
 
   const userId = userResult.rows[0].id;
   const client = await pool.connect();
+
+  let latitude = data.latitude || null;
+  let longitude = data.longitude || null;
+
+  if (!latitude || !longitude) {
+    const coords = await geocodeVenue(data.venue);
+    if (coords) {
+      latitude = coords.lat;
+      longitude = coords.lng;
+    }
+  }
 
   try {
     await client.query("BEGIN");
@@ -36,8 +47,8 @@ export async function createGame(firebaseUid: string, data: CreateGameInput) {
       data.title,
       data.description || null,
       data.venue,
-      data.latitude || null,
-      data.longitude || null,
+      latitude,
+      longitude,
       data.scheduled_at,
       data.skill_level,
       data.max_players,
@@ -70,7 +81,7 @@ export async function getGames(params: GetGamesQueryParams) {
     FROM games g
     JOIN users u ON g.organizer_id = u.id
     LEFT JOIN game_members gm ON g.id = gm.game_id
-    WHERE g.status = 'OPEN' AND g.scheduled_at > NOW()
+    WHERE g.status IN ('OPEN', 'FULL') AND g.scheduled_at > NOW()
   `;
 
   const values: any[] = [];
@@ -361,6 +372,15 @@ export async function leaveGame(gameId: number, firebaseUid: string) {
     if (inMembers.rows.length === 0) {
       await client.query("ROLLBACK");
       return { error: "NOT_IN_GAME" };
+    }
+
+    const isOrganizer = await client.query(
+      "SELECT id FROM games WHERE id = $1 AND organizer_id = $2",
+      [gameId, userId]
+    );
+    if (isOrganizer.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return { error: "ORGANIZER_CANNOT_LEAVE" };
     }
 
     await client.query(

@@ -1,18 +1,17 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { useColorScheme } from "react-native";
 
-import { Colors } from "@/constants/theme";
+import { COLORS } from "@/theme/tokens";
+import { useThemeContext } from "@/context/ThemeContext";
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === "unspecified" ? "light" : scheme];
+  const { theme: t } = useThemeContext();
 
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      tintColor="#2563EB"
+      backgroundColor={t.card}
+      tintColor={COLORS.rust}
       labelStyle={{
-        color: colors.text,
+        color: t.title,
       }}
     >
       <NativeTabs.Trigger name="index">

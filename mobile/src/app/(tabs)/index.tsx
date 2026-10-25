@@ -1,8 +1,8 @@
-import { useEffect , useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  RefreshControl,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import api from "../../services/api";
 import { auth } from "../../config/firebase";
+import { useThemeContext } from "../../context/ThemeContext";
+import { COLORS, RADII, SHADOWS } from "@/theme/tokens";
+import { ChalkPitchLines, SportTile } from "@/components/ui";
+import { MatchTicketCard } from "@/components/match-ticket-card";
 
 type Game = {
   id: number;
@@ -26,120 +30,52 @@ type Game = {
   organizer_name: string;
 };
 
-const sportEmojis: Record<string, string> = {
-  Football: "⚽", Cricket: "🏏", Basketball: "🏀", Badminton: "🏸", Tennis: "🎾",
-};
-
 const sports = [
-  { name: "Football",   emoji: "⚽", color: "#2563EB", bg: "#EAF1FF" },
-  { name: "Cricket",    emoji: "🏏", color: "#16A34A", bg: "#E8F5E9" },
-  { name: "Basketball", emoji: "🏀", color: "#D97706", bg: "#FEF3C7" },
-  { name: "Badminton",  emoji: "🏸", color: "#7C3AED", bg: "#F3E8FF" },
+  { name: "Football", emoji: "⚽" },
+  { name: "Cricket", emoji: "🏏" },
+  { name: "Basketball", emoji: "🏀" },
+  { name: "Badminton", emoji: "🏸" },
+  { name: "Tennis", emoji: "🎾" },
 ];
 
-const skillColors: Record<string, { text: string; bg: string }> = {
-  Beginner:     { text: "#16A34A", bg: "#E8F5E9" },
-  Intermediate: { text: "#D97706", bg: "#FEF3C7" },
-  Advanced:     { text: "#DC2626", bg: "#FEE2E2" },
-};
-
-const sportColors: Record<string, { text: string; bg: string }> = {
-  Football:   { text: "#2563EB", bg: "#EAF1FF" },
-  Cricket:    { text: "#16A34A", bg: "#E8F5E9" },
-  Basketball: { text: "#D97706", bg: "#FEF3C7" },
-  Badminton:  { text: "#7C3AED", bg: "#F3E8FF" },
-  Tennis:     { text: "#EA580C", bg: "#FEF0E7" },
-};
-
-
-
-function GameCard({ game }: { game: Game }) {
-  const isFull = game.current_players >= game.max_players;
-  const sc = sportColors[game.sport] ?? { text: "#2563EB", bg: "#EAF1FF" };
-  const skc = skillColors[game.skill_level] ?? { text: "#64748B", bg: "#F1F5F9" };
-  const progress = (game.current_players / game.max_players) * 100;
-  const sportEmoji = sportEmojis[game.sport] ?? "🏅";
-  const dateStr = new Date(game.scheduled_at).toLocaleDateString("en-IN", {
-    weekday: "short", day: "numeric", month: "short",
-  });
-  const timeStr = new Date(game.scheduled_at).toLocaleTimeString("en-IN", {
-    hour: "2-digit", minute: "2-digit",
-  });
-
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.gameCard, pressed && styles.cardPressed]}
-      onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
-    >
-      <View style={styles.gameHeader}>
-        <View style={[styles.sportBadge, { backgroundColor: sc.bg }]}>
-          <Text style={[styles.sportBadgeText, { color: sc.text }]}>
-            {sportEmoji} {game.sport}
-          </Text>
-        </View>
-        <View style={[styles.gameIcon, { backgroundColor: sc.bg }]}>
-          <Text style={styles.gameIconText}>{sportEmoji}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.gameTitle}>{game.title}</Text>
-      <Text style={styles.infoText}>📍 {game.venue}</Text>
-      <Text style={styles.infoText}>📅 {dateStr}  •  🕐 {timeStr}</Text>
-
-      <View style={styles.gameFooter}>
-        <View style={[styles.skillBadge, { backgroundColor: skc.bg }]}>
-          <Text style={[styles.skillText, { color: skc.text }]}>{game.skill_level}</Text>
-        </View>
-        <View>
-          <Text style={styles.playerCount}>{game.current_players}/{game.max_players} players</Text>
-          <View style={styles.progressBackground}>
-            <View style={[styles.progressBar, { width: `${progress}%` }, isFull && { backgroundColor: "#DC2626" }]} />
-          </View>
-          {isFull && <Text style={styles.fullText}>FULL</Text>}
-        </View>
-      </View>
-    </Pressable>
-  );
-}
-
-
 export default function HomeScreen() {
+  const { theme: t } = useThemeContext();
   const [activeSport, setActiveSport] = useState<string | null>(null);
-const [games, setGames] = useState<Game[]>([]);
-const [loading, setLoading] = useState(true);
-const [refreshing, setRefreshing] = useState(false);
-const [userName, setUserName] = useState("Player");
+  const [games, setGames] = useState<Game[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState("Player");
 
-useEffect(() => {
-  fetchGames();
-  loadUser();
-}, []);
+  useEffect(() => {
+    fetchGames();
+    loadUser();
+  }, []);
 
-async function fetchGames() {
-  try {
-    const res = await api.get("/games");
-    setGames(res.data.games || []);
-  } catch {
-    // show empty state if fails
-  } finally {
-    setLoading(false);
+  async function fetchGames() {
+    try {
+      const res = await api.get("/games");
+      setGames(res.data.games || []);
+    } catch {
+      // show empty state if fails
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
-async function loadUser() {
-  const user = auth.currentUser;
-  if (user?.displayName) {
-    setUserName(user.displayName);
-  } else if (user?.email) {
-    setUserName(user.email.split("@")[0]);
+  async function loadUser() {
+    const user = auth.currentUser;
+    if (user?.displayName) {
+      setUserName(user.displayName);
+    } else if (user?.email) {
+      setUserName(user.email.split("@")[0]);
+    }
   }
-}
 
-async function handleRefresh() {
-  setRefreshing(true);
-  await fetchGames();
-  setRefreshing(false);
-}
+  async function handleRefresh() {
+    setRefreshing(true);
+    await fetchGames();
+    setRefreshing(false);
+  }
 
   function handleSportPress(sportName: string) {
     setActiveSport(sportName);
@@ -158,181 +94,183 @@ async function handleRefresh() {
     router.push("/profile");
   }
 
-
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]} edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
+        {/* Salmon header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Good afternoon 👋</Text>
-            <Text style={styles.userName}>{userName}</Text>
-            <Text style={styles.location}>📍 Koramangala, Bangalore</Text>
-          </View>
-
-          <Pressable
-            style={({ pressed }) => [styles.profileButton, pressed && styles.cardPressed]}
-            onPress={handleProfilePress}
-          >
-            <Text style={styles.profileIcon}>👤</Text>
-          </Pressable>
-        </View>
-
-        <Pressable
-          style={({ pressed }) => [styles.searchBar, pressed && styles.cardPressed]}
-          onPress={handleSearchPress}
-          android_ripple={{ color: "#E2E8F0" }}
-        >
-          <View pointerEvents="none" style={styles.searchBarInner}>
-            <Text style={styles.searchIcon}>⌕</Text>
-            <Text style={styles.searchPlaceholder}>What do you want to play?</Text>
-            <View style={styles.aiBadge}>
-              <Text style={styles.aiText}>✨ AI</Text>
+          <ChalkPitchLines />
+          <View style={styles.headerRow}>
+            <View style={styles.headerText}>
+              <Text style={styles.greeting}>Good afternoon 👋</Text>
+              <Text style={styles.userName}>{userName}</Text>
+              <View style={styles.locationRow}>
+                <View style={styles.locationDot} />
+                <Text style={styles.location}>Koramangala, Bangalore</Text>
+              </View>
             </View>
+            <Pressable
+              style={({ pressed }) => [styles.profileButton, pressed && { opacity: 0.85 }]}
+              onPress={handleProfilePress}
+            >
+              <Text style={styles.profileIcon}>👤</Text>
+            </Pressable>
           </View>
-        </Pressable>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Sports</Text>
-        </View>
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sportsRow}
-        >
-          {sports.map((sport) => {
-            const isActive = activeSport === sport.name;
-            return (
-              <Pressable
-                key={sport.name}
-                style={[
-                  styles.sportCard,
-                  isActive && { borderColor: sport.color, borderWidth: 2 },
-                ]}
-                onPress={() => handleSportPress(sport.name)}
-              >
-                <View style={[styles.sportIconBg, { backgroundColor: sport.bg }]}>
-                  <Text style={styles.sportEmoji}>{sport.emoji}</Text>
-                </View>
-                <Text style={[styles.sportName, isActive && { color: sport.color }]}>
-                  {sport.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Nearby Games</Text>
-          <Pressable onPress={handleSeeAll}>
-            <Text style={styles.seeAll}>See all →</Text>
+          {/* Search bar */}
+          <Pressable
+            style={({ pressed }) => [styles.searchBar, { backgroundColor: t.card }, pressed && { opacity: 0.9 }]}
+            onPress={handleSearchPress}
+          >
+            <View pointerEvents="none" style={styles.searchBarInner}>
+              <Text style={styles.searchIcon}>⌕</Text>
+              <Text style={[styles.searchPlaceholder, { color: t.placeholder }]}>
+                What do you want to play?
+              </Text>
+              <View style={styles.aiBadge}>
+                <Text style={styles.aiText}>✨ AI</Text>
+              </View>
+            </View>
           </Pressable>
         </View>
 
-        {loading ? (
-          <ActivityIndicator color="#2563EB" style={{ marginTop: 30 }} />
-        ) : games.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🏅</Text>
-            <Text style={styles.emptyTitle}>No games nearby</Text>
-            <Text style={styles.emptyText}>Be the first to create one!</Text>
+        <View style={styles.contentArea}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: t.title }]}>Sports</Text>
           </View>
-        ) : (
-          games.slice(0, 5).map((game) => (
-            <GameCard key={game.id} game={game} />
-          ))
-        )}
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.sportsRow}
+          >
+            {sports.map((sport) => (
+              <SportTile
+                key={sport.name}
+                name={sport.name}
+                emoji={sport.emoji}
+                selected={activeSport === sport.name}
+                onPress={() => handleSportPress(sport.name)}
+                mode="filter"
+                style={styles.sportTile}
+              />
+            ))}
+          </ScrollView>
+
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: t.title }]}>Nearby Games</Text>
+            <Pressable onPress={handleSeeAll}>
+              <Text style={styles.seeAll}>See all →</Text>
+            </Pressable>
+          </View>
+
+          {loading ? (
+            <ActivityIndicator color={COLORS.ink} style={{ marginTop: 30 }} />
+          ) : games.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyEmoji}>📅</Text>
+              <Text style={[styles.emptyTitle, { color: COLORS.rust }]}>No games nearby yet</Text>
+              <Text style={[styles.emptyText, { color: t.subtitle }]}>Be the first to create one!</Text>
+              <Pressable
+                style={({ pressed }) => [styles.createOneBtn, pressed && { opacity: 0.85 }]}
+                onPress={() => router.push("/create")}
+              >
+                <Text style={styles.createOneText}>Create One</Text>
+              </Pressable>
+            </View>
+          ) : (
+            games.slice(0, 5).map((game) => (
+              <MatchTicketCard
+                key={game.id}
+                game={game}
+                onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
+              />
+            ))
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F7F9FC",
-  },
-  container: {
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 24,
-  },
-
+  safeArea: { flex: 1 },
+  container: { paddingBottom: 24 },
   header: {
+    backgroundColor: COLORS.salmon,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.ink,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    overflow: "hidden",
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
   },
-  greeting: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 4,
-  },
+  headerText: { flex: 1 },
+  greeting: { fontSize: 14, color: COLORS.ink, opacity: 0.8, marginBottom: 4 },
   userName: {
     fontSize: 27,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "800",
+    color: COLORS.ink,
     marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: -0.5,
   },
-  location: {
-    fontSize: 13,
-    color: "#5B6573",
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  locationDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.butter,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
   },
+  location: { fontSize: 13, color: COLORS.ink, opacity: 0.8 },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#DCE8FF",
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: COLORS.butter,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
+    ...SHADOWS.hard,
   },
-  profileIcon: {
-    fontSize: 20,
-  },
-
+  profileIcon: { fontSize: 20 },
   searchBar: {
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
-    marginBottom: 26,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
-  searchBarInner: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  searchIcon: {
-    fontSize: 25,
-    color: "#64748B",
-    marginRight: 8,
-  },
-  searchPlaceholder: {
-    flex: 1,
-    color: "#94A3B8",
-    fontSize: 14,
-  },
+  searchBarInner: { flex: 1, flexDirection: "row", alignItems: "center" },
+  searchIcon: { fontSize: 22, color: COLORS.muted, marginRight: 8 },
+  searchPlaceholder: { flex: 1, fontSize: 14 },
   aiBadge: {
-    backgroundColor: "#E9F0FF",
+    backgroundColor: COLORS.butter,
+    borderWidth: 1,
+    borderColor: COLORS.ink,
     paddingHorizontal: 9,
     paddingVertical: 5,
     borderRadius: 10,
   },
-  aiText: {
-    color: "#2563EB",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-
+  aiText: { color: COLORS.ink, fontSize: 11, fontWeight: "800" },
+  contentArea: { paddingHorizontal: 18, paddingTop: 20 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -341,135 +279,35 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  seeAll: {
-    color: "#2563EB",
-    fontSize: 13,
-    fontWeight: "600",
+  seeAll: { color: COLORS.rust, fontSize: 13, fontWeight: "700" },
+  sportsRow: { paddingBottom: 24, gap: 12 },
+  sportTile: {
+    width: 88,
+    height: 88,
+    paddingVertical: 10,
   },
-
-  sportsRow: {
-    paddingBottom: 24,
-  },
-  sportCard: {
-    width: 92,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    alignItems: "center",
+  emptyState: { alignItems: "center", paddingTop: 50 },
+  emptyEmoji: { fontSize: 48 },
+  emptyTitle: { fontSize: 18, fontWeight: "800", marginTop: 12, textTransform: "uppercase" },
+  emptyText: { fontSize: 13, marginTop: 6 },
+  createOneBtn: {
+    marginTop: 18,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    borderRadius: RADII.button,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
+    backgroundColor: COLORS.butter,
+    ...SHADOWS.hard,
   },
-  sportIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 7,
+  createOneText: {
+    color: COLORS.ink,
+    fontSize: 15,
+    fontWeight: "800",
+    textTransform: "uppercase",
   },
-  sportEmoji: {
-    fontSize: 26,
-  },
-  sportName: {
-    fontSize: 12,
-    color: "#374151",
-    fontWeight: "600",
-  },
-
-  gameCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 15,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  gameHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 9,
-  },
-  sportBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  sportBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  gameIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gameIconText: {
-    fontSize: 20,
-  },
-  gameTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 8,
-  },
-  infoText: {
-    fontSize: 12,
-    color: "#64748B",
-    marginBottom: 5,
-  },
-  gameFooter: {
-    marginTop: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-  },
-  skillBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-  },
-  skillText: {
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  playerCount: {
-    fontSize: 11,
-    color: "#475569",
-    textAlign: "right",
-    marginBottom: 4,
-  },
-  progressBackground: {
-    width: 70,
-    height: 5,
-    backgroundColor: "#E5E7EB",
-    borderRadius: 5,
-    overflow: "hidden",
-  },
-  progressBar: {
-    height: "100%",
-    backgroundColor: "#F59E0B",
-    borderRadius: 5,
-  },
-  fullText: {
-    fontSize: 9,
-    color: "#DC2626",
-    fontWeight: "700",
-    textAlign: "right",
-    marginTop: 3,
-  },
-  emptyState: { alignItems: "center", paddingTop: 40 },
-  emptyEmoji: { fontSize: 36, marginBottom: 10 },
-  emptyTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  emptyText: { fontSize: 13, color: "#64748B", marginTop: 4 },
 });
