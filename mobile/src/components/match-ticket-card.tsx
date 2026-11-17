@@ -48,8 +48,8 @@ export function MatchTicketCard({ game, onPress, showPlayed, style }: Props) {
         key={i}
         style={
           joined
-            ? styles.playerBlockFilled
-            : [styles.playerBlockEmpty, { borderColor: COLORS.ink }]
+            ? [styles.playerBlockFilled, { backgroundColor: t.title }]
+            : [styles.playerBlockEmpty, { borderColor: t.border }]
         }
       />
     );
@@ -97,25 +97,25 @@ export function MatchTicketCard({ game, onPress, showPlayed, style }: Props) {
 
         <View style={styles.playerRow}>
           <View style={styles.blocks}>{blocks}</View>
-          <Text style={styles.playerCount}>
+          <Text style={[styles.playerCount, { color: t.title }]}>
             {game.current_players}/{game.max_players}
           </Text>
         </View>
 
         <View style={styles.footer}>
-          <View style={[styles.skillPill, { borderColor: COLORS.ink }]}>
+          <View style={[styles.skillPill, { borderColor: t.border }]}>
             <Text style={[styles.skillPillText, { color: t.title }]}>{game.skill_level}</Text>
           </View>
           <View
             style={[
               styles.joinBtn,
               {
-                backgroundColor: isFull ? COLORS.ink : COLORS.butter,
-                borderColor: COLORS.ink,
+                backgroundColor: isFull ? t.title : COLORS.butter,
+                borderColor: t.border,
               },
             ]}
           >
-            <Text style={[styles.joinText, { color: isFull ? COLORS.card : COLORS.ink }]}>
+            <Text style={[styles.joinText, { color: isFull ? t.card : COLORS.ink }]}>
               {isFull ? "FULL" : "JOIN"}
             </Text>
           </View>

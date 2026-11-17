@@ -136,7 +136,7 @@ export default function AISearchScreen() {
                   key={ex}
                   style={({ pressed }) => [
                     styles.exampleChip,
-                    { backgroundColor: t.card, borderColor: COLORS.ink },
+                    { backgroundColor: t.card, borderColor: t.border },
                     pressed && { opacity: 0.9 },
                   ]}
                   onPress={() => setQuery(ex)}

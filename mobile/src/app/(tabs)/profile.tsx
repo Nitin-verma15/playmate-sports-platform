@@ -15,11 +15,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { signOut } from "firebase/auth";
 import { router } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import api from "../../services/api";
 import { auth } from "../../config/firebase";
 import { useThemeContext } from "../../context/ThemeContext";
 import { COLORS, RADII, SHADOWS, SPORT_COLORS, SPORT_EMOJIS } from "@/theme/tokens";
-import { ChalkPitchLines, SportTag } from "@/components/ui";
+import { ChalkPitchLines } from "@/components/ui";
 
 type SkillLevel = "Beginner" | "Intermediate" | "Advanced";
 
@@ -37,6 +38,15 @@ type SportSkill = {
   skill_level: SkillLevel;
 };
 
+type MyGame = {
+  id: number;
+  organizer_id: number;
+  scheduled_at: string;
+  status: string;
+};
+
+const SKILL_BARS: Record<SkillLevel, number> = { Beginner: 1, Intermediate: 2, Advanced: 3 };
+
 export default function ProfileScreen() {
   const { theme: t, isDark, toggleTheme } = useThemeContext();
 
@@ -49,19 +59,24 @@ export default function ProfileScreen() {
   const [college, setCollege] = useState("");
   const [saving, setSaving] = useState(false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [myGames, setMyGames] = useState<MyGame[]>([]);
 
   useEffect(() => {
     api.get("/users/me")
       .then((res) => {
         const data = res.data;
         setProfile(data.user);
-        setSports(data.sports || []);
+        setSports(data.user.sports || data.sports || []);
         setName(data.user.full_name || "");
         setCity(data.user.city || "");
         setCollege(data.user.college || "");
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    api.get("/users/me/games")
+      .then((res) => setMyGames(res.data.games || []))
+      .catch(() => {});
   }, []);
 
   async function pickAvatar() {
@@ -78,17 +93,26 @@ export default function ProfileScreen() {
 
   async function handleSave() {
     setSaving(true);
+    const payload = {
+      full_name: name.trim(),
+      city: city.trim(),
+      college: college.trim() || undefined,
+    };
     try {
-      await api.put("/users/me", {
-        full_name: name.trim(),
-        city: city.trim(),
-        college: college.trim() || undefined,
-      });
-      setProfile((prev) => prev ? { ...prev, full_name: name, city, college } : prev);
+      let res;
+      try {
+        res = await api.put("/users/me", payload);
+      } catch (err: any) {
+        // No profile row yet (e.g. sign-up couldn't reach the server) -> create it
+        if (err?.response?.status !== 404) throw err;
+        res = await api.post("/users/me", payload);
+      }
+      setProfile(res.data.user);
       setEditing(false);
       Alert.alert("Saved", "Profile updated.");
-    } catch {
-      Alert.alert("Error", "Could not update profile.");
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || "Could not update profile.";
+      Alert.alert("Error", msg);
     } finally {
       setSaving(false);
     }
@@ -111,7 +135,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
-        <ActivityIndicator color={COLORS.ink} style={{ marginTop: 80 }} />
+        <ActivityIndicator color={t.title} style={{ marginTop: 80 }} />
       </SafeAreaView>
     );
   }
@@ -119,10 +143,15 @@ export default function ProfileScreen() {
   const displayName = profile?.full_name || profile?.email?.split("@")[0] || "Player";
   const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
+  const now = Date.now();
+  const hosted = profile ? myGames.filter((g) => g.organizer_id === profile.id).length : 0;
+  const upcoming = myGames.filter((g) => new Date(g.scheduled_at).getTime() > now && g.status !== "CANCELLED").length;
+  const memberNo = profile?.id ? `#${String(profile.id).padStart(4, "0")}` : "#----";
+
   const stats = [
-    { value: sports.length, label: "Sports" },
-    { value: sports.filter((s) => s.skill_level === "Advanced").length, label: "Advanced" },
-    { value: sports.filter((s) => s.skill_level === "Intermediate").length, label: "Intermediate" },
+    { value: myGames.length, label: "Games", color: COLORS.butter, rotate: "-2deg" },
+    { value: hosted, label: "Hosted", color: SPORT_COLORS.Badminton, rotate: "1.5deg" },
+    { value: upcoming, label: "Upcoming", color: SPORT_COLORS.Cricket, rotate: "-1deg" },
   ];
 
   return (
@@ -143,137 +172,199 @@ export default function ProfileScreen() {
               onPress={editing ? handleSave : () => setEditing(true)}
               disabled={saving}
             >
-              <Text style={[styles.editBtnText, editing && styles.editBtnTextActive]}>
-                {saving ? "Saving..." : editing ? "Save" : "Edit"}
+              <Text style={styles.editBtnText}>
+                {saving ? "Saving..." : editing ? "✓ Save" : "✎ Edit"}
               </Text>
             </Pressable>
           </View>
 
-          {/* Avatar */}
-          <View style={styles.avatarSection}>
-            <Pressable onPress={pickAvatar} style={styles.avatarPressable}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-              ) : (
-                <Text style={styles.avatarText}>{initials}</Text>
-              )}
-              <View style={styles.cameraBadge}>
-                <Text style={{ fontSize: 12 }}>📷</Text>
-              </View>
-            </Pressable>
-
-            {!editing && (
-              <>
-                <Text style={[styles.heroName, { color: COLORS.ink }]}>{displayName}</Text>
-                <Text style={styles.heroSubInfo}>
-                  {[profile?.college, profile?.city].filter(Boolean).join("  •  ") || profile?.email}
-                </Text>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Stat tiles */}
-        <View style={styles.statsRow}>
-          {stats.map((stat) => (
-            <View key={stat.label} style={[styles.statTile, { backgroundColor: t.card, borderColor: t.border }]}>
-              <Text style={styles.statNumber}>{stat.value}</Text>
-              <Text style={[styles.statLabel, { color: t.subtitle }]}>{stat.label}</Text>
+          {/* Player card */}
+          <Animated.View entering={FadeInDown.duration(450)} style={styles.playerCard}>
+            <View style={styles.cardStrip}>
+              <Text style={styles.cardStripText}>PLAYMATE · PLAYER CARD</Text>
+              <Text style={styles.cardStripText}>{memberNo}</Text>
             </View>
-          ))}
+
+            <View style={styles.cardBody}>
+              <Pressable onPress={pickAvatar} style={styles.avatarBox}>
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                ) : (
+                  <Text style={styles.avatarText}>{initials}</Text>
+                )}
+                <View style={styles.cameraBadge}>
+                  <Text style={{ fontSize: 11 }}>📷</Text>
+                </View>
+              </Pressable>
+
+              <View style={styles.cardInfo}>
+                <Text style={styles.heroName} numberOfLines={2}>{displayName}</Text>
+                {!!profile?.college && <Text style={styles.heroLine} numberOfLines={1}>🎓 {profile.college}</Text>}
+                {!!profile?.city && <Text style={styles.heroLine} numberOfLines={1}>📍 {profile.city}</Text>}
+                {!profile?.college && !profile?.city && (
+                  <Text style={styles.heroLine} numberOfLines={1}>{profile?.email || "Tap edit to add your details"}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.cardFooter}>
+              {sports.length > 0 ? (
+                sports.map((s) => (
+                  <View key={s.sport} style={[styles.miniBadge, { backgroundColor: SPORT_COLORS[s.sport] ?? COLORS.track }]}>
+                    <Text style={styles.miniBadgeText}>{SPORT_EMOJIS[s.sport] ?? "⚽"}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noSportsText}>No sports picked yet</Text>
+              )}
+            </View>
+          </Animated.View>
         </View>
 
         {/* Edit fields */}
         {editing && (
-          <View style={styles.editFields}>
+          <Animated.View
+            entering={FadeInDown.duration(300)}
+            style={[styles.editCard, { backgroundColor: t.card, borderColor: t.border }]}
+          >
+            <Text style={[styles.fieldLabel, { color: t.subtitle }]}>Full name</Text>
             <TextInput
-              style={[styles.nameInput, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               value={name}
               onChangeText={setName}
-              placeholder="Full Name"
+              placeholder="Your name"
               placeholderTextColor={t.placeholder}
             />
+            <Text style={[styles.fieldLabel, { color: t.subtitle }]}>College</Text>
             <TextInput
-              style={[styles.subInput, { marginTop: 8, backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               value={college}
               onChangeText={setCollege}
-              placeholder="College"
+              placeholder="Your college"
               placeholderTextColor={t.placeholder}
             />
+            <Text style={[styles.fieldLabel, { color: t.subtitle }]}>City</Text>
             <TextInput
-              style={[styles.subInput, { marginTop: 8, backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               value={city}
               onChangeText={setCity}
-              placeholder="City"
+              placeholder="Your city"
               placeholderTextColor={t.placeholder}
             />
+            <Pressable onPress={() => setEditing(false)} style={styles.cancelBtn}>
+              <Text style={[styles.cancelText, { color: t.subtitle }]}>Cancel</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* Stats board */}
+        <Animated.View entering={FadeInDown.delay(100).duration(450)} style={styles.statsRow}>
+          {stats.map((stat) => (
+            <View key={stat.label} style={[styles.statTile, { backgroundColor: stat.color, transform: [{ rotate: stat.rotate }] }]}>
+              <Text style={styles.statNumber}>{stat.value}</Text>
+              <Text style={styles.statLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </Animated.View>
+
+        {/* Sports & skills */}
+        <SectionTitle title="My Sports" />
+        {sports.length > 0 ? (
+          <Animated.View entering={FadeInDown.delay(180).duration(450)} style={styles.sportGrid}>
+            {sports.map((s, i) => (
+              <View
+                key={s.sport}
+                style={[
+                  styles.sportCard,
+                  { backgroundColor: SPORT_COLORS[s.sport] ?? COLORS.track },
+                  { transform: [{ rotate: i % 2 === 0 ? "-1.5deg" : "1.5deg" }] },
+                ]}
+              >
+                <Text style={styles.sportEmoji}>{SPORT_EMOJIS[s.sport] ?? "⚽"}</Text>
+                <Text style={styles.sportName}>{s.sport}</Text>
+                <View style={styles.skillRow}>
+                  <View style={styles.meter}>
+                    {[1, 2, 3].map((bar) => (
+                      <View
+                        key={bar}
+                        style={[
+                          styles.meterBar,
+                          { height: bar * 6 + 4 },
+                          bar <= SKILL_BARS[s.skill_level] && styles.meterBarOn,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  <Text style={styles.skillText}>{s.skill_level}</Text>
+                </View>
+              </View>
+            ))}
+          </Animated.View>
+        ) : (
+          <View style={[styles.emptyCard, { backgroundColor: t.card, borderColor: t.border }]}>
+            <Text style={styles.emptyEmoji}>🏅</Text>
+            <Text style={[styles.emptyText, { color: t.subtitle }]}>
+              You haven&apos;t picked any sports yet.
+            </Text>
           </View>
         )}
 
-        {sports.length > 0 && (
-          <>
-            <Text style={[styles.sectionTitle, { color: t.title }]}>Preferred Sports</Text>
-            <View style={styles.chipsRow}>
-              {sports.map((s) => (
-                <SportTag key={s.sport} sport={s.sport} emoji={SPORT_EMOJIS[s.sport] ?? "⚽"} style={styles.chip} />
-              ))}
+        {/* Settings */}
+        <SectionTitle title="Settings" />
+        <View style={[styles.settingsCard, { backgroundColor: t.card, borderColor: t.border }]}>
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: isDark ? COLORS.ink : COLORS.butter }]}>
+              <Text style={{ fontSize: 18 }}>{isDark ? "🌙" : "☀️"}</Text>
             </View>
-
-            <Text style={[styles.sectionTitle, { color: t.title }]}>Skill Levels</Text>
-            <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border }]}>
-              {sports.map((s, i) => (
-                <View
-                  key={s.sport}
-                  style={[styles.skillRow, i < sports.length - 1 && { borderBottomWidth: 2, borderBottomColor: t.rowBorder }]}
-                >
-                  <View style={styles.skillLeft}>
-                    <View style={[styles.sportDot, { backgroundColor: SPORT_COLORS[s.sport] ?? COLORS.track, borderColor: COLORS.ink }]}>
-                      <Text style={{ fontSize: 17 }}>{SPORT_EMOJIS[s.sport] ?? "⚽"}</Text>
-                    </View>
-                    <Text style={[styles.sportName, { color: t.title }]}>{s.sport}</Text>
-                  </View>
-                  <View style={[styles.skillBadge, { borderColor: COLORS.ink }]}>
-                    <Text style={[styles.skillBadgeText, { color: t.title }]}>{s.skill_level}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        <Text style={[styles.sectionTitle, { color: t.title }]}>Appearance</Text>
-        <View style={[styles.card, { backgroundColor: t.card, borderColor: t.border }]}>
-          <View style={styles.themeRow}>
-            <View style={styles.themeLeft}>
-              <Text style={styles.themeIcon}>{isDark ? "🌙" : "☀️"}</Text>
-              <View>
-                <Text style={[styles.themeLabel, { color: t.title }]}>
-                  {isDark ? "Dark Mode" : "Light Mode"}
-                </Text>
-                <Text style={[styles.themeSub, { color: t.subtitle }]}>
-                  {isDark ? "Easy on the eyes at night" : "Clean and bright"}
-                </Text>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: t.title }]}>{isDark ? "Dark mode" : "Light mode"}</Text>
+              <Text style={[styles.settingSub, { color: t.subtitle }]}>
+                {isDark ? "Easy on the eyes at night" : "Clean and bright"}
+              </Text>
             </View>
             <Switch
               value={isDark}
               onValueChange={toggleTheme}
-              trackColor={{ false: COLORS.butter, true: COLORS.ink }}
+              trackColor={{ false: COLORS.butter, true: COLORS.rust }}
               thumbColor={COLORS.card}
             />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: t.rowBorder }]} />
+
+          <View style={styles.settingRow}>
+            <View style={[styles.settingIcon, { backgroundColor: SPORT_COLORS.Tennis }]}>
+              <Text style={{ fontSize: 18 }}>✉️</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.settingLabel, { color: t.title }]}>Email</Text>
+              <Text style={[styles.settingSub, { color: t.subtitle }]} numberOfLines={1}>
+                {profile?.email || auth.currentUser?.email || "—"}
+              </Text>
+            </View>
           </View>
         </View>
 
         <Pressable
-          style={({ pressed }) => [styles.signOutBtn, pressed && { opacity: 0.85 }]}
+          style={({ pressed }) => [styles.signOutBtn, pressed && { transform: [{ translateY: 2 }], opacity: 0.9 }]}
           onPress={handleSignOut}
         >
-          <Text style={styles.signOutText}>Sign Out</Text>
+          <Text style={styles.signOutText}>⏻  Sign Out</Text>
         </Pressable>
 
         <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SectionTitle({ title }: { title: string }) {
+  const { theme: t } = useThemeContext();
+  return (
+    <View style={styles.sectionRow}>
+      <View style={styles.sectionBar} />
+      <Text style={[styles.sectionTitle, { color: t.title }]}>{title}</Text>
+    </View>
   );
 }
 
@@ -284,16 +375,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.salmon,
     borderBottomWidth: 2,
     borderBottomColor: COLORS.ink,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
     paddingTop: 50,
     paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingBottom: 28,
     overflow: "hidden",
   },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 18,
   },
   screenTitle: {
     fontSize: 26,
@@ -303,169 +396,173 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   editBtn: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: RADII.chip,
     borderWidth: 2,
     borderColor: COLORS.ink,
-    backgroundColor: "transparent",
+    backgroundColor: COLORS.card,
+    ...SHADOWS.hard,
   },
   saveBtnActive: { backgroundColor: COLORS.butter },
   editBtnText: { fontSize: 13, fontWeight: "800", color: COLORS.ink, textTransform: "uppercase" },
-  editBtnTextActive: { color: COLORS.ink },
-  avatarSection: { alignItems: "center" },
-  avatarPressable: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+
+  playerCard: {
+    backgroundColor: COLORS.card,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    borderRadius: 18,
+    overflow: "hidden",
+    transform: [{ rotate: "-1.5deg" }],
+    ...SHADOWS.hard,
+  },
+  cardStrip: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: COLORS.ink,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  cardStripText: { color: COLORS.butter, fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
+  cardBody: { flexDirection: "row", alignItems: "center", padding: 14, gap: 14 },
+  avatarBox: {
+    width: 84,
+    height: 84,
+    borderRadius: 16,
     backgroundColor: COLORS.butter,
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 12,
-    overflow: "visible",
-    ...SHADOWS.hard,
+    transform: [{ rotate: "3deg" }],
   },
-  avatarImage: { width: 94, height: 94, borderRadius: 47 },
-  avatarText: {
-    color: COLORS.ink,
-    fontSize: 30,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
+  avatarImage: { width: 80, height: 80, borderRadius: 14 },
+  avatarText: { color: COLORS.ink, fontSize: 30, fontWeight: "800", textTransform: "uppercase" },
   cameraBadge: {
     position: "absolute",
-    bottom: -2,
-    right: -2,
+    bottom: -8,
+    right: -8,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: COLORS.ink,
-    padding: 4,
-  },
-  heroName: {
-    fontSize: 20,
-    fontWeight: "800",
-    marginBottom: 4,
-    textAlign: "center",
-    textTransform: "uppercase",
-  },
-  heroSubInfo: {
-    fontSize: 13,
-    color: COLORS.ink,
-    opacity: 0.75,
-    textAlign: "center",
-  },
-  statsRow: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginTop: -16,
-    gap: 10,
-  },
-  statTile: {
-    flex: 1,
-    borderRadius: RADII.card,
-    borderWidth: 2,
-    paddingVertical: 14,
-    alignItems: "center",
-    ...SHADOWS.hard,
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: COLORS.rust,
-    marginBottom: 2,
-  },
-  statLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.3 },
-  editFields: { paddingHorizontal: 16, paddingTop: 16 },
-  nameInput: {
-    width: "100%",
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  subInput: {
-    width: "100%",
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    marginTop: 22,
-    marginBottom: 10,
-    marginHorizontal: 16,
-    textTransform: "uppercase",
-    letterSpacing: 0.3,
-  },
-  chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    paddingHorizontal: 16,
-  },
-  chip: { marginBottom: 2 },
-  card: {
-    borderRadius: RADII.card,
-    borderWidth: 2,
-    overflow: "hidden",
-    marginHorizontal: 16,
-    ...SHADOWS.hard,
-  },
-  skillRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  skillLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  sportDot: {
-    width: 34,
-    height: 34,
     borderRadius: 10,
     borderWidth: 2,
+    borderColor: COLORS.ink,
+    padding: 3,
+  },
+  cardInfo: { flex: 1, gap: 3 },
+  heroName: { fontSize: 20, fontWeight: "800", color: COLORS.ink, textTransform: "uppercase", letterSpacing: -0.3, marginBottom: 2 },
+  heroLine: { fontSize: 12, color: COLORS.muted, fontWeight: "600" },
+  cardFooter: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    borderTopWidth: 2,
+    borderTopColor: COLORS.track,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  miniBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
     alignItems: "center",
     justifyContent: "center",
   },
-  sportName: { fontSize: 14, fontWeight: "700" },
-  skillBadge: { borderWidth: 2, borderRadius: RADII.chip, paddingHorizontal: 10, paddingVertical: 5 },
-  skillBadgeText: { fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
-  themeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+  miniBadgeText: { fontSize: 15 },
+  noSportsText: { fontSize: 12, color: COLORS.muted, fontWeight: "600" },
+
+  editCard: {
+    marginHorizontal: 16,
+    marginTop: 18,
+    borderWidth: 2,
+    borderRadius: RADII.card,
+    padding: 14,
+    ...SHADOWS.hard,
   },
-  themeLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  themeIcon: { fontSize: 28 },
-  themeLabel: { fontSize: 14, fontWeight: "800", marginBottom: 2 },
-  themeSub: { fontSize: 12 },
+  fieldLabel: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, marginTop: 6 },
+  input: { borderWidth: 2, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, marginBottom: 6 },
+  cancelBtn: { alignSelf: "center", paddingVertical: 8, marginTop: 4 },
+  cancelText: { fontSize: 13, fontWeight: "700" },
+
+  statsRow: { flexDirection: "row", marginHorizontal: 16, marginTop: 22, gap: 10 },
+  statTile: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    ...SHADOWS.hard,
+  },
+  statNumber: { fontSize: 28, fontWeight: "800", color: COLORS.ink, letterSpacing: -1 },
+  statLabel: { fontSize: 11, fontWeight: "700", color: COLORS.ink, opacity: 0.75, textTransform: "uppercase" },
+
+  sectionRow: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 16, marginTop: 26, marginBottom: 12 },
+  sectionBar: { width: 6, height: 20, borderRadius: 3, backgroundColor: COLORS.rust },
+  sectionTitle: { fontSize: 16, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3 },
+
+  sportGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, paddingHorizontal: 16 },
+  sportCard: {
+    width: "47%",
+    flexGrow: 1,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    borderRadius: RADII.card,
+    padding: 12,
+    ...SHADOWS.hard,
+  },
+  sportEmoji: { fontSize: 28 },
+  sportName: { fontSize: 14, fontWeight: "800", color: COLORS.ink, textTransform: "uppercase", marginTop: 6 },
+  skillRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, marginTop: 8 },
+  meter: { flexDirection: "row", alignItems: "flex-end", gap: 3 },
+  meterBar: { width: 7, borderRadius: 2, borderWidth: 1.5, borderColor: COLORS.ink, backgroundColor: "transparent" },
+  meterBarOn: { backgroundColor: COLORS.ink },
+  skillText: { fontSize: 11, fontWeight: "800", color: COLORS.ink, textTransform: "uppercase" },
+
+  emptyCard: {
+    marginHorizontal: 16,
+    borderWidth: 2,
+    borderRadius: RADII.card,
+    padding: 18,
+    alignItems: "center",
+    gap: 6,
+  },
+  emptyEmoji: { fontSize: 32 },
+  emptyText: { fontSize: 13, textAlign: "center" },
+
+  settingsCard: {
+    marginHorizontal: 16,
+    borderWidth: 2,
+    borderRadius: RADII.card,
+    overflow: "hidden",
+    ...SHADOWS.hard,
+  },
+  settingRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
+  settingIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  settingLabel: { fontSize: 14, fontWeight: "800" },
+  settingSub: { fontSize: 12, marginTop: 1 },
+  divider: { height: 2, marginHorizontal: 14 },
+
   signOutBtn: {
-    marginTop: 22,
-    height: 56,
+    marginTop: 24,
+    height: 54,
     borderRadius: RADII.button,
     borderWidth: 2,
-    borderColor: COLORS.rust,
-    backgroundColor: "transparent",
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.rust,
     alignItems: "center",
     justifyContent: "center",
     marginHorizontal: 16,
+    ...SHADOWS.hard,
   },
-  signOutText: {
-    color: COLORS.rust,
-    fontSize: 15,
-    fontWeight: "800",
-    textTransform: "uppercase",
-  },
+  signOutText: { color: COLORS.card, fontSize: 15, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
 });

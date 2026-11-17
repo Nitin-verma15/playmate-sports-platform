@@ -53,7 +53,7 @@ export default function OnboardingSportsScreen() {
                 key={sport.id}
                 style={[
                   styles.tile,
-                  { backgroundColor: active ? sportColor : t.card, borderColor: COLORS.ink },
+                  { backgroundColor: active ? sportColor : t.card, borderColor: active ? COLORS.ink : t.border },
                   active && { transform: [{ rotate: "-2deg" }], ...SHADOWS.hard },
                 ]}
                 onPress={() => toggle(sport.id)}
@@ -64,7 +64,7 @@ export default function OnboardingSportsScreen() {
                   </View>
                 )}
                 <Text style={styles.tileEmoji}>{emoji}</Text>
-                <Text style={[styles.tileName, { color: COLORS.ink }]}>{sport.name}</Text>
+                <Text style={[styles.tileName, { color: active ? COLORS.ink : t.title }]}>{sport.name}</Text>
               </Pressable>
             );
           })}

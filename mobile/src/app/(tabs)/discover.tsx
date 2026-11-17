@@ -186,7 +186,7 @@ export default function DiscoverScreen() {
         </View>
 
         <View style={styles.contentArea}>
-          <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: COLORS.ink }]}>
+          <View style={[styles.searchContainer, { backgroundColor: t.card, borderColor: t.border }]}>
             <Text style={styles.searchIcon}>⌕</Text>
             <TextInput
               value={search}
@@ -228,7 +228,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.resultCount, { color: t.subtitle }]}>
               {loading ? "Loading..." : `${filteredGames.length} ${filteredGames.length === 1 ? "game" : "games"} found`}
             </Text>
-            <View style={[styles.viewToggle, { borderColor: COLORS.ink }]}>
+            <View style={[styles.viewToggle, { borderColor: t.border }]}>
               <Pressable
                 style={[styles.viewButton, viewMode === "list" && styles.viewButtonActive]}
                 onPress={() => setViewMode("list")}
@@ -249,7 +249,7 @@ export default function DiscoverScreen() {
           </View>
 
           {loading ? (
-            <ActivityIndicator color={COLORS.ink} style={{ marginTop: 40 }} />
+            <ActivityIndicator color={t.title} style={{ marginTop: 40 }} />
           ) : viewMode === "list" ? (
             filteredGames.length === 0 ? (
               <View style={styles.emptyState}>
@@ -267,7 +267,7 @@ export default function DiscoverScreen() {
               ))
             )
           ) : (
-            <View style={styles.mapContainer}>
+            <View style={[styles.mapContainer, { borderColor: t.border }]}>
               <WebView
                 style={styles.map}
                 originWhitelist={["*"]}
@@ -286,8 +286,8 @@ export default function DiscoverScreen() {
                 }}
               />
               {filteredGames.filter((g) => g.latitude && g.longitude).length === 0 && (
-                <View style={styles.mapEmptyOverlay}>
-                  <Text style={styles.mapEmptyText}>No games with location data yet. Create a game to see it here.</Text>
+                <View style={[styles.mapEmptyOverlay, { backgroundColor: t.card, borderColor: t.border }]}>
+                  <Text style={[styles.mapEmptyText, { color: t.subtitle }]}>No games with location data yet. Create a game to see it here.</Text>
                 </View>
               )}
             </View>
@@ -306,7 +306,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.dropdownItemText, { color: t.title }, selectedSport === s && styles.dropdownItemTextActive]}>
               {s === "All" ? "All Sports" : s}
             </Text>
-            {selectedSport === s && <Text style={styles.checkmark}>✓</Text>}
+            {selectedSport === s && <Text style={[styles.checkmark, { color: t.title }]}>✓</Text>}
           </TouchableOpacity>
         ))}
       </DropdownModal>
@@ -333,7 +333,7 @@ export default function DiscoverScreen() {
                 </Text>
               )}
             </View>
-            {selectedSkill === s && <Text style={styles.checkmark}>✓</Text>}
+            {selectedSkill === s && <Text style={[styles.checkmark, { color: t.title }]}>✓</Text>}
           </TouchableOpacity>
         ))}
       </DropdownModal>
@@ -349,7 +349,7 @@ export default function DiscoverScreen() {
             <Text style={[styles.dropdownItemText, { color: t.title }, selectedDistance === d && styles.dropdownItemTextActive]}>
               Within {d} km
             </Text>
-            {selectedDistance === d && <Text style={styles.checkmark}>✓</Text>}
+            {selectedDistance === d && <Text style={[styles.checkmark, { color: t.title }]}>✓</Text>}
           </TouchableOpacity>
         ))}
       </DropdownModal>
@@ -370,7 +370,7 @@ export default function DiscoverScreen() {
               </Text>
               {opt !== "Any" && <Text style={styles.dropdownItemSub}>{timeRanges[opt]}</Text>}
             </View>
-            {selectedTime === opt && <Text style={styles.checkmark}>✓</Text>}
+            {selectedTime === opt && <Text style={[styles.checkmark, { color: t.title }]}>✓</Text>}
           </TouchableOpacity>
         ))}
       </DropdownModal>
@@ -399,12 +399,13 @@ function DropdownModal({ visible, title, onClose, children }: {
 }
 
 function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const { theme: t } = useThemeContext();
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.filterChip, { backgroundColor: active ? COLORS.butter : COLORS.card, borderColor: COLORS.ink }]}
+      style={[styles.filterChip, { backgroundColor: active ? COLORS.butter : t.card, borderColor: t.border }]}
     >
-      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label} ▾</Text>
+      <Text style={[styles.filterChipText, { color: t.subtitle }, active && styles.filterChipTextActive]}>{label} ▾</Text>
     </Pressable>
   );
 }

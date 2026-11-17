@@ -66,7 +66,7 @@ export default function GameDetailsScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]}>
-        <ActivityIndicator color={COLORS.ink} style={{ marginTop: 80 }} />
+        <ActivityIndicator color={t.title} style={{ marginTop: 80 }} />
       </SafeAreaView>
     );
   }
@@ -77,10 +77,10 @@ export default function GameDetailsScreen() {
         <View style={styles.errorContainer}>
           <Text style={[styles.errorTitle, { color: t.title }]}>Game not found</Text>
           <Pressable
-            style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [styles.backButton, { backgroundColor: t.title }, pressed && { opacity: 0.85 }]}
             onPress={() => router.back()}
           >
-            <Text style={styles.backButtonText}>Go Back</Text>
+            <Text style={[styles.backButtonText, { color: t.card }]}>Go Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -134,7 +134,7 @@ export default function GameDetailsScreen() {
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: t.title }]}>Skill Level</Text>
-          <View style={[styles.skillBadge, { borderColor: COLORS.ink }]}>
+          <View style={[styles.skillBadge, { borderColor: t.border }]}>
             <Text style={[styles.skillText, { color: t.title }]}>{game.skill_level}</Text>
           </View>
         </View>
@@ -144,7 +144,7 @@ export default function GameDetailsScreen() {
             <Text style={[styles.sectionTitle, { color: t.title }]}>Players</Text>
             <Text style={[styles.playerCount, { color: t.title }]}>{game.current_players}/{game.max_players}</Text>
           </View>
-          <View style={[styles.progressBackground, { borderColor: COLORS.ink }]}>
+          <View style={[styles.progressBackground, { borderColor: t.border }]}>
             <View style={[styles.progressBar, { width: `${playerPct}%` as any }]} />
           </View>
           <Text style={[styles.playerText, { color: t.subtitle }]}>
@@ -153,8 +153,8 @@ export default function GameDetailsScreen() {
         </View>
 
         <View style={[styles.organizerCard, { backgroundColor: t.card, borderColor: t.border }]}>
-          <View style={styles.organizerAvatar}>
-            <Text style={styles.organizerAvatarText}>{initials}</Text>
+          <View style={[styles.organizerAvatar, { backgroundColor: t.title }]}>
+            <Text style={[styles.organizerAvatarText, { color: t.card }]}>{initials}</Text>
           </View>
           <View>
             <Text style={[styles.organizerLabel, { color: t.subtitle }]}>Organized by</Text>
@@ -167,14 +167,14 @@ export default function GameDetailsScreen() {
           disabled={joining || isFull}
           style={({ pressed }) => [
             styles.joinButton,
-            { backgroundColor: isFull ? COLORS.ink : COLORS.butter },
+            { backgroundColor: isFull ? t.title : COLORS.butter, borderColor: t.border },
             pressed && !isFull && !joining && { transform: [{ translateY: 3 }] },
           ]}
         >
           {joining ? (
             <ActivityIndicator color={COLORS.card} />
           ) : (
-            <Text style={[styles.joinButtonText, { color: isFull ? COLORS.card : COLORS.ink }]}>
+            <Text style={[styles.joinButtonText, { color: isFull ? t.card : COLORS.ink }]}>
               {isFull ? "Join Waitlist" : "Join Game ✓"}
             </Text>
           )}

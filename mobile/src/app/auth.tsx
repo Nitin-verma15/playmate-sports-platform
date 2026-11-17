@@ -17,7 +17,16 @@ import {
 import { auth } from "../config/firebase";
 import api from "../services/api";
 import { useThemeContext } from "../context/ThemeContext";
-import { COLORS, RADII, SHADOWS } from "../theme/tokens";
+import { COLORS, RADII, SHADOWS, SPORT_COLORS } from "../theme/tokens";
+import { ChalkPitchLines, Floaty } from "@/components/ui";
+
+// Sport stickers floating around the logo.
+const stickers = [
+  { emoji: "⚽", sport: "Football", top: "14%", left: "10%", right: undefined, bottom: undefined, rotate: "-12deg", delay: 0 },
+  { emoji: "🏀", sport: "Basketball", top: "10%", right: "12%", left: undefined, bottom: undefined, rotate: "10deg", delay: 400 },
+  { emoji: "🏸", sport: "Badminton", bottom: "16%", left: "16%", top: undefined, right: undefined, rotate: "8deg", delay: 800 },
+  { emoji: "🎾", sport: "Tennis", bottom: "20%", right: "10%", top: undefined, left: undefined, rotate: "-8deg", delay: 1200 },
+] as const;
 
 type Mode = "options" | "email";
 
@@ -61,8 +70,14 @@ export default function AuthScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.brandBlock}>
-        <View style={styles.chalkCircle} />
-        <View style={styles.chalkLine} />
+        <ChalkPitchLines circleSize={260} />
+        {stickers.map((st) => (
+          <Floaty key={st.emoji} delay={st.delay} distance={7} style={[styles.stickerPos, { top: st.top, left: st.left, right: st.right, bottom: st.bottom } as any]}>
+            <View style={[styles.sticker, { backgroundColor: SPORT_COLORS[st.sport], transform: [{ rotate: st.rotate }] }]}>
+              <Text style={styles.stickerEmoji}>{st.emoji}</Text>
+            </View>
+          </Floaty>
+        ))}
         <View style={styles.logoBox}>
           <Text style={styles.logoEmoji}>🎯</Text>
         </View>
@@ -73,26 +88,26 @@ export default function AuthScreen() {
       <View style={[styles.sheet, { backgroundColor: t.card }]}>
         {mode === "options" ? (
           <>
-            <Pressable style={[styles.googleBtn, { borderColor: COLORS.ink }]} onPress={handleGoogle}>
+            <Pressable style={[styles.googleBtn, { borderColor: t.border }]} onPress={handleGoogle}>
               <Text style={[styles.googleIcon]}>G</Text>
               <Text style={[styles.googleText, { color: t.title }]}>Continue with Google</Text>
             </Pressable>
 
             <Pressable
-              style={[styles.inkBtn, { marginTop: 12 }]}
+              style={[styles.inkBtn, { marginTop: 12, backgroundColor: t.title, borderColor: t.title }]}
               onPress={() => { setIsSignUp(false); setMode("email"); }}
             >
               <Text style={[styles.inkBtnText, { color: t.card }]}>✉  CONTINUE WITH EMAIL</Text>
             </Pressable>
 
             <View style={styles.dividerRow}>
-              <View style={[styles.divider, { backgroundColor: COLORS.track }]} />
+              <View style={[styles.divider, { backgroundColor: t.rowBorder }]} />
               <Text style={[styles.dividerText, { color: t.subtitle }]}>or</Text>
-              <View style={[styles.divider, { backgroundColor: COLORS.track }]} />
+              <View style={[styles.divider, { backgroundColor: t.rowBorder }]} />
             </View>
 
             <Pressable
-              style={[styles.outlineBtn, { borderColor: COLORS.ink }]}
+              style={[styles.outlineBtn, { borderColor: t.border }]}
               onPress={() => { setIsSignUp(true); setMode("email"); }}
             >
               <Text style={[styles.outlineBtnText, { color: t.title }]}>CREATE AN ACCOUNT</Text>
@@ -115,7 +130,7 @@ export default function AuthScreen() {
 
             <Text style={[styles.label, { color: t.subtitle }]}>Email</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: t.input, borderColor: COLORS.ink, color: t.inputText }]}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="you@example.com"
               placeholderTextColor={t.placeholder}
               value={email}
@@ -126,7 +141,7 @@ export default function AuthScreen() {
 
             <Text style={[styles.label, { color: t.subtitle }]}>Password</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: t.input, borderColor: COLORS.ink, color: t.inputText }]}
+              style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
               placeholder="••••••••"
               placeholderTextColor={t.placeholder}
               value={password}
@@ -137,15 +152,15 @@ export default function AuthScreen() {
             <Pressable
               style={[
                 styles.inkBtn,
-                { marginTop: 24 },
+                { marginTop: 24, backgroundColor: t.title, borderColor: t.title },
                 (!email || !password || loading) && { backgroundColor: COLORS.track, borderColor: COLORS.track },
               ]}
               onPress={handleContinue}
               disabled={!email || !password || loading}
             >
               {loading
-                ? <ActivityIndicator color={COLORS.card} />
-                : <Text style={[styles.inkBtnText, { color: COLORS.card }]}>{isSignUp ? "CREATE ACCOUNT" : "LOG IN"}</Text>
+                ? <ActivityIndicator color={t.card} />
+                : <Text style={[styles.inkBtnText, { color: t.card }]}>{isSignUp ? "CREATE ACCOUNT" : "LOG IN"}</Text>
               }
             </Pressable>
 
@@ -176,23 +191,18 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
     overflow: "hidden",
   },
-  chalkCircle: {
-    position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    borderWidth: 1,
+  stickerPos: { position: "absolute" },
+  sticker: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    borderWidth: 2,
     borderColor: COLORS.ink,
-    opacity: 0.14,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.hard,
   },
-  chalkLine: {
-    position: "absolute",
-    height: 1,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.ink,
-    opacity: 0.14,
-  },
+  stickerEmoji: { fontSize: 24 },
 
   logoBox: {
     width: 68,

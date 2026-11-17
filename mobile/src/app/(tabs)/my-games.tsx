@@ -95,7 +95,7 @@ export default function MyGamesScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {loading ? (
-          <ActivityIndicator color={COLORS.ink} style={{ marginTop: 60 }} />
+          <ActivityIndicator color={t.title} style={{ marginTop: 60 }} />
         ) : games.length === 0 ? (
           <EmptyState tab={activeTab} />
         ) : (
@@ -120,20 +120,20 @@ function EmptyState({ tab }: { tab: TabKey }) {
     <View style={styles.empty}>
       <View style={styles.calWrap}>
         <View style={styles.calRustBand} />
-        <View style={[styles.calBody, { backgroundColor: t.card, borderColor: COLORS.ink }]}>
+        <View style={[styles.calBody, { backgroundColor: t.card, borderColor: t.border }]}>
           <View style={styles.calGridRow}>
             {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={styles.calDot} />
+              <View key={i} style={[styles.calDot, { borderColor: t.border }]} />
             ))}
           </View>
           <View style={styles.calGridRow}>
             {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={[styles.calDot, i === 1 && styles.calDotFilled]} />
+              <View key={i} style={[styles.calDot, { borderColor: t.border }, i === 1 && { backgroundColor: t.title }]} />
             ))}
           </View>
           <View style={styles.calGridRow}>
             {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={styles.calDot} />
+              <View key={i} style={[styles.calDot, { borderColor: t.border }]} />
             ))}
           </View>
         </View>
@@ -207,7 +207,6 @@ const styles = StyleSheet.create({
   },
   calGridRow: { flexDirection: "row", justifyContent: "space-around" },
   calDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.track, borderWidth: 1, borderColor: COLORS.ink },
-  calDotFilled: { backgroundColor: COLORS.ink },
   emptyTitle: { fontSize: 18, fontWeight: "800", textAlign: "center", marginBottom: 8, textTransform: "uppercase" },
   emptySub: { fontSize: 13, textAlign: "center", lineHeight: 20 },
   findBtn: { marginTop: 22, width: 220 },
