@@ -7,7 +7,7 @@ import { auth } from "../config/firebase";
 const devHost = Constants.expoConfig?.hostUri?.split(":")[0];
 
 const api = axios.create({
-  baseURL: devHost ? `http://${devHost}:5000/api` : "http://10.193.238.139:5000/api",
+  baseURL: devHost ? `http://${devHost}:5000/api` : "https://playmate-backend-jfox.onrender.com/api",
   timeout: 10000,
 });
 
