@@ -15,6 +15,7 @@ import api from "../../services/api";
 import { useThemeContext } from "../../context/ThemeContext";
 import { COLORS, RADII, SHADOWS, SPORT_COLORS } from "@/theme/tokens";
 import { ChalkPitchLines, PrimaryButton, SportTag, SportTile } from "@/components/ui";
+import { DatePickerModal, TimePickerModal } from "@/components/date-time-picker";
 
 type Sport = {
   id: string;
@@ -52,6 +53,7 @@ export default function CreateGameScreen() {
   const [venueSearching, setVenueSearching] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [picker, setPicker] = useState<"date" | "time" | null>(null);
   const [maxPlayers, setMaxPlayers] = useState<number>(10);
   const [skillLevel, setSkillLevel] = useState<SkillLevel | null>(null);
   const [description, setDescription] = useState("");
@@ -82,7 +84,9 @@ export default function CreateGameScreen() {
     try {
       const [day, month, year] = date.split("/");
       const time24 = convertTo24h(time);
-      const scheduledAt = new Date(`${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${time24}:00.000Z`).toISOString();
+      const [hours, minutes] = time24.split(":").map(Number);
+      // Build the date in the phone's local time zone (e.g. IST), then convert to UTC for the server
+      const scheduledAt = new Date(Number(year), Number(month) - 1, Number(day), hours, minutes).toISOString();
       await api.post("/games", {
         sport: sport.name,
         title: gameTitle.trim(),
@@ -182,10 +186,10 @@ export default function CreateGameScreen() {
                 setVenueDebounce(tmr);
               }}
             />
-            {venueSearching && <ActivityIndicator color={COLORS.ink} size="small" />}
+            {venueSearching && <ActivityIndicator color={t.title} size="small" />}
           </View>
           {showSuggestions && (
-            <View style={[styles.suggestionsBox, { backgroundColor: t.card, borderColor: COLORS.ink }]}>
+            <View style={[styles.suggestionsBox, { backgroundColor: t.card, borderColor: t.border }]}>
               {venueSuggestions.map((s, i) => (
                 <Pressable
                   key={i}
@@ -205,44 +209,29 @@ export default function CreateGameScreen() {
           <View style={styles.row}>
             <View style={styles.half}>
               <SectionLabel text="Date" required />
-              <View style={[styles.iconInput, { backgroundColor: t.input, borderColor: t.border }]}>
+              <Pressable
+                onPress={() => setPicker("date")}
+                style={[styles.iconInput, { backgroundColor: t.input, borderColor: t.border }]}
+              >
                 <Text style={styles.inputIcon}>📅</Text>
-                <TextInput
-                  style={[styles.iconInputText, { color: t.inputText }]}
-                  placeholder="dd/mm/yyyy"
-                  placeholderTextColor={t.placeholder}
-                  value={date}
-                  onChangeText={(val) => {
-                    const digits = val.replace(/\D/g, "").slice(0, 8);
-                    let f = digits;
-                    if (digits.length >= 3 && digits.length <= 4) f = `${digits.slice(0, 2)}/${digits.slice(2)}`;
-                    else if (digits.length > 4) f = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
-                    setDate(f);
-                  }}
-                  keyboardType="numeric"
-                  maxLength={10}
-                />
-              </View>
+                <Text style={[styles.iconInputText, { color: date ? t.inputText : t.placeholder }]}>
+                  {date || "Pick date"}
+                </Text>
+                <Text style={[styles.pickerCaret, { color: t.subtitle }]}>▾</Text>
+              </Pressable>
             </View>
             <View style={styles.half}>
               <SectionLabel text="Time" required />
-              <View style={[styles.iconInput, { backgroundColor: t.input, borderColor: t.border }]}>
+              <Pressable
+                onPress={() => setPicker("time")}
+                style={[styles.iconInput, { backgroundColor: t.input, borderColor: t.border }]}
+              >
                 <Text style={styles.inputIcon}>🕐</Text>
-                <TextInput
-                  style={[styles.iconInputText, { color: t.inputText }]}
-                  placeholder="hh:mm AM/PM"
-                  placeholderTextColor={t.placeholder}
-                  value={time}
-                  onChangeText={(val) => {
-                    const upper = val.toUpperCase().replace(/[^0-9APM\s:]/g, "");
-                    if (upper.length <= 2) setTime(upper);
-                    else if (upper.length === 3 && !upper.includes(":")) setTime(`${upper.slice(0, 2)}:${upper.slice(2)}`);
-                    else setTime(upper.slice(0, 8));
-                  }}
-                  autoCapitalize="characters"
-                  maxLength={8}
-                />
-              </View>
+                <Text style={[styles.iconInputText, { color: time ? t.inputText : t.placeholder }]}>
+                  {time || "Pick time"}
+                </Text>
+                <Text style={[styles.pickerCaret, { color: t.subtitle }]}>▾</Text>
+              </Pressable>
             </View>
           </View>
 
@@ -256,12 +245,12 @@ export default function CreateGameScreen() {
                   key={n}
                   style={[
                     styles.playerChip,
-                    { borderColor: COLORS.ink },
-                    active ? { backgroundColor: COLORS.ink } : { backgroundColor: t.card },
+                    { borderColor: t.border },
+                    active ? { backgroundColor: t.title } : { backgroundColor: t.card },
                   ]}
                   onPress={() => setMaxPlayers(n)}
                 >
-                  <Text style={[styles.playerChipText, { color: active ? COLORS.card : t.title }]}>{n}</Text>
+                  <Text style={[styles.playerChipText, { color: active ? t.card : t.title }]}>{n}</Text>
                 </Pressable>
               );
             })}
@@ -269,7 +258,7 @@ export default function CreateGameScreen() {
 
           {/* Skill Level — segmented control */}
           <SectionLabel text="Skill Level" required />
-          <View style={[styles.skillSegment, { borderColor: COLORS.ink }]}>
+          <View style={[styles.skillSegment, { borderColor: t.border }]}>
             {skillLevels.map((level) => {
               const active = skillLevel === level;
               return (
@@ -300,7 +289,7 @@ export default function CreateGameScreen() {
 
           {/* Preview Card */}
           {isFormValid && sport && (
-            <View style={[styles.previewCard, { backgroundColor: t.card, borderColor: COLORS.ink }, { borderLeftColor: SPORT_COLORS[sport.name] }]}>
+            <View style={[styles.previewCard, { backgroundColor: t.card, borderColor: t.border }, { borderLeftColor: SPORT_COLORS[sport.name] }]}>
               <View style={styles.previewHero}>
                 <Text style={styles.previewEmoji}>{sport.emoji}</Text>
                 <View>
@@ -312,7 +301,7 @@ export default function CreateGameScreen() {
                 <Text style={[styles.previewInfo, { color: t.subtitle }]}>📍 {venue}</Text>
                 <Text style={[styles.previewInfo, { color: t.subtitle }]}>📅 {date}  •  🕐 {time}</Text>
                 <View style={styles.previewFooter}>
-                  <View style={[styles.previewSkillBadge, { borderColor: COLORS.ink }]}>
+                  <View style={[styles.previewSkillBadge, { borderColor: t.border }]}>
                     <Text style={[styles.previewSkillText, { color: t.title }]}>{skillLevel}</Text>
                   </View>
                   <Text style={[styles.previewPlayers, { color: t.subtitle }]}>0/{maxPlayers} players</Text>
@@ -334,6 +323,9 @@ export default function CreateGameScreen() {
           <View style={{ height: 32 }} />
         </View>
       </ScrollView>
+
+      <DatePickerModal visible={picker === "date"} value={date} onSelect={setDate} onClose={() => setPicker(null)} />
+      <TimePickerModal visible={picker === "time"} value={time} onSelect={setTime} onClose={() => setPicker(null)} />
     </SafeAreaView>
   );
 }
@@ -394,7 +386,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   inputIcon: { fontSize: 18, marginRight: 8 },
-  iconInputText: { flex: 1, fontSize: 14 },
+  iconInputText: { flex: 1, fontSize: 14, paddingVertical: 2 },
+  pickerCaret: { fontSize: 12, marginLeft: 4 },
 
   venueRow: {
     flexDirection: "row",

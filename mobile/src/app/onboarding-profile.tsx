@@ -60,7 +60,7 @@ export default function OnboardingProfileScreen() {
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={[styles.label, { color: t.subtitle }]}>Full Name <Text style={{ color: COLORS.rust }}>*</Text></Text>
         <TextInput
-          style={[styles.input, { backgroundColor: t.input, borderColor: COLORS.ink, color: t.inputText }]}
+          style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
           placeholder="Enter your name"
           placeholderTextColor={t.placeholder}
           value={name}
@@ -69,7 +69,7 @@ export default function OnboardingProfileScreen() {
 
         <Text style={[styles.label, { color: t.subtitle }]}>City <Text style={{ color: COLORS.rust }}>*</Text></Text>
         <TextInput
-          style={[styles.input, { backgroundColor: t.input, borderColor: COLORS.ink, color: t.inputText }]}
+          style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
           placeholder="e.g. Bangalore"
           placeholderTextColor={t.placeholder}
           value={city}
@@ -78,7 +78,7 @@ export default function OnboardingProfileScreen() {
 
         <Text style={[styles.label, { color: t.subtitle }]}>College / University</Text>
         <TextInput
-          style={[styles.input, { backgroundColor: t.input, borderColor: COLORS.ink, color: t.inputText }]}
+          style={[styles.input, { backgroundColor: t.input, borderColor: t.border, color: t.inputText }]}
           placeholder="e.g. IIT Bangalore"
           placeholderTextColor={t.placeholder}
           value={college}

@@ -10,10 +10,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import api from "../../services/api";
 import { auth } from "../../config/firebase";
 import { useThemeContext } from "../../context/ThemeContext";
-import { COLORS, RADII, SHADOWS } from "@/theme/tokens";
+import { COLORS, RADII, SHADOWS, SPORT_COLORS } from "@/theme/tokens";
 import { ChalkPitchLines, SportTile } from "@/components/ui";
 import { MatchTicketCard } from "@/components/match-ticket-card";
 
@@ -94,6 +95,15 @@ export default function HomeScreen() {
     router.push("/profile");
   }
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning ☀️" : hour < 17 ? "Good afternoon 👋" : "Good evening 🌙";
+  const openSpots = games.reduce((n, g) => n + Math.max(0, g.max_players - g.current_players), 0);
+  const stats = [
+    { value: loading ? "–" : String(games.length), label: "Games\nnearby", color: COLORS.butter, rotate: "-2deg" },
+    { value: loading ? "–" : String(openSpots), label: "Open\nspots", color: SPORT_COLORS.Badminton, rotate: "1.5deg" },
+    { value: String(sports.length), label: "Sports\nto play", color: SPORT_COLORS.Cricket, rotate: "-1deg" },
+  ];
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: t.bg }]} edges={["bottom"]}>
       <ScrollView
@@ -106,7 +116,7 @@ export default function HomeScreen() {
           <ChalkPitchLines />
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
-              <Text style={styles.greeting}>Good afternoon 👋</Text>
+              <Text style={styles.greeting}>{greeting}</Text>
               <Text style={styles.userName}>{userName}</Text>
               <View style={styles.locationRow}>
                 <View style={styles.locationDot} />
@@ -139,16 +149,52 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.contentArea}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: t.title }]}>Sports</Text>
-          </View>
+          {/* Matchday board */}
+          <Animated.View entering={FadeInDown.delay(80).duration(450)} style={styles.board}>
+            {stats.map((s) => (
+              <View key={s.label} style={[styles.statTile, { backgroundColor: s.color, transform: [{ rotate: s.rotate }] }]}>
+                <Text style={styles.statValue}>{s.value}</Text>
+                <Text style={styles.statLabel}>{s.label}</Text>
+              </View>
+            ))}
+          </Animated.View>
+
+          {/* Quick actions */}
+          <Animated.View entering={FadeInDown.delay(160).duration(450)} style={styles.actions}>
+            <Pressable
+              style={({ pressed }) => [styles.actionCard, styles.actionHost, pressed && styles.pressedDown]}
+              onPress={() => router.push("/create")}
+            >
+              <View style={styles.actionIcon}>
+                <Text style={styles.actionIconText}>＋</Text>
+              </View>
+              <Text style={styles.actionTitle}>Host a game</Text>
+              <Text style={styles.actionSub}>Fill your squad fast</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.actionCard,
+                { backgroundColor: t.card, borderColor: t.border },
+                pressed && styles.pressedDown,
+              ]}
+              onPress={handleSeeAll}
+            >
+              <View style={[styles.actionIcon, { backgroundColor: COLORS.salmon }]}>
+                <Text style={styles.actionIconText}>⌖</Text>
+              </View>
+              <Text style={[styles.actionTitle, { color: t.title }]}>Find a game</Text>
+              <Text style={[styles.actionSub, { color: t.subtitle }]}>Join players near you</Text>
+            </Pressable>
+          </Animated.View>
+
+          <SectionHeader title="Sports" />
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.sportsRow}
           >
-            {sports.map((sport) => (
+            {sports.map((sport, i) => (
               <SportTile
                 key={sport.name}
                 name={sport.name}
@@ -156,20 +202,15 @@ export default function HomeScreen() {
                 selected={activeSport === sport.name}
                 onPress={() => handleSportPress(sport.name)}
                 mode="filter"
-                style={styles.sportTile}
+                style={{ ...styles.sportTile, transform: [{ rotate: i % 2 === 0 ? "-2deg" : "2deg" }] }}
               />
             ))}
           </ScrollView>
 
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: t.title }]}>Nearby Games</Text>
-            <Pressable onPress={handleSeeAll}>
-              <Text style={styles.seeAll}>See all →</Text>
-            </Pressable>
-          </View>
+          <SectionHeader title="Nearby Games" onSeeAll={handleSeeAll} />
 
           {loading ? (
-            <ActivityIndicator color={COLORS.ink} style={{ marginTop: 30 }} />
+            <ActivityIndicator color={t.title} style={{ marginTop: 30 }} />
           ) : games.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyEmoji}>📅</Text>
@@ -183,17 +224,35 @@ export default function HomeScreen() {
               </Pressable>
             </View>
           ) : (
-            games.slice(0, 5).map((game) => (
-              <MatchTicketCard
-                key={game.id}
-                game={game}
-                onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
-              />
+            games.slice(0, 5).map((game, i) => (
+              <Animated.View key={game.id} entering={FadeInDown.delay(i * 70).duration(400)}>
+                <MatchTicketCard
+                  game={game}
+                  onPress={() => router.push({ pathname: "/game-details", params: { id: String(game.id) } })}
+                />
+              </Animated.View>
             ))
           )}
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SectionHeader({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  const { theme: t } = useThemeContext();
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionTitleRow}>
+        <View style={styles.sectionBar} />
+        <Text style={[styles.sectionTitle, { color: t.title }]}>{title}</Text>
+      </View>
+      {onSeeAll && (
+        <Pressable onPress={onSeeAll} style={[styles.seeAllPill, { borderColor: t.border }]}>
+          <Text style={styles.seeAll}>See all →</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
@@ -270,7 +329,44 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   aiText: { color: COLORS.ink, fontSize: 11, fontWeight: "800" },
-  contentArea: { paddingHorizontal: 18, paddingTop: 20 },
+  contentArea: { paddingHorizontal: 18, paddingTop: 22 },
+  board: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  statTile: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    ...SHADOWS.hard,
+  },
+  statValue: { fontSize: 28, fontWeight: "800", color: COLORS.ink, letterSpacing: -1 },
+  statLabel: { fontSize: 11, fontWeight: "700", color: COLORS.ink, opacity: 0.75, textTransform: "uppercase", marginTop: 2 },
+  actions: { flexDirection: "row", gap: 12, marginBottom: 26 },
+  actionCard: {
+    flex: 1,
+    borderWidth: 2,
+    borderRadius: RADII.card,
+    padding: 14,
+    ...SHADOWS.hard,
+  },
+  actionHost: { backgroundColor: COLORS.butter, borderColor: COLORS.ink },
+  pressedDown: { transform: [{ translateY: 3 }], shadowOffset: { width: 0, height: 0 }, elevation: 0 },
+  actionIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: COLORS.ink,
+    backgroundColor: COLORS.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+    transform: [{ rotate: "-6deg" }],
+  },
+  actionIconText: { fontSize: 18, fontWeight: "800", color: COLORS.ink },
+  actionTitle: { fontSize: 15, fontWeight: "800", color: COLORS.ink, textTransform: "uppercase" },
+  actionSub: { fontSize: 12, color: COLORS.ink, opacity: 0.7, marginTop: 3 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -283,8 +379,11 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  seeAll: { color: COLORS.rust, fontSize: 13, fontWeight: "700" },
-  sportsRow: { paddingBottom: 24, gap: 12 },
+  sectionTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  sectionBar: { width: 6, height: 20, borderRadius: 3, backgroundColor: COLORS.rust },
+  seeAllPill: { borderWidth: 2, borderRadius: RADII.chip, paddingHorizontal: 10, paddingVertical: 4 },
+  seeAll: { color: COLORS.rust, fontSize: 12, fontWeight: "800" },
+  sportsRow: { paddingTop: 6, paddingBottom: 26, paddingHorizontal: 4, gap: 12 },
   sportTile: {
     width: 88,
     height: 88,

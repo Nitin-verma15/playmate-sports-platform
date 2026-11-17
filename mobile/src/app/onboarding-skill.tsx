@@ -68,7 +68,7 @@ export default function OnboardingSkillScreen() {
                 key={level.id}
                 style={[
                   styles.card,
-                  { backgroundColor: active ? "#F2D27A30" : t.card, borderColor: COLORS.ink },
+                  { backgroundColor: active ? "#F2D27A30" : t.card, borderColor: t.border },
                   active && SHADOWS.hard,
                 ]}
                 onPress={() => setSelected(level.id)}
@@ -86,7 +86,7 @@ export default function OnboardingSkillScreen() {
                         { height: bar * 8 + 4 },
                         active && bar <= level.bars
                           ? { backgroundColor: COLORS.rust, borderColor: COLORS.rust }
-                          : { backgroundColor: "transparent", borderColor: COLORS.ink },
+                          : { backgroundColor: "transparent", borderColor: t.border },
                       ]}
                     />
                   ))}

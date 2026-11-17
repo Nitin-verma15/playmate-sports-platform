@@ -1,8 +1,13 @@
 import axios from "axios";
+import Constants from "expo-constants";
 import { auth } from "../config/firebase";
 
+// Use the same computer IP the phone used to load the app (from the QR code),
+// so the API is always reachable and requests don't hang until timeout.
+const devHost = Constants.expoConfig?.hostUri?.split(":")[0];
+
 const api = axios.create({
-  baseURL: "http://172.21.4.139:5000/api",
+  baseURL: devHost ? `http://${devHost}:5000/api` : "http://10.193.238.139:5000/api",
   timeout: 10000,
 });
 
